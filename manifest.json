@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "id": "foamy.teams",
+  "name": "Foamy Teams",
+  "version": "1.0.0",
+  "author": "foamrider",
+  "description": "Configurable Teams account launcher and window-title unread status",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Microsoft Teams",
+    "description": "Teams accounts and unread status",
+    "category": "Communication",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "language": "system",
+      "accounts": [],
+      "showCount": true,
+      "hideWhenClosed": false,
+      "showContext": true,
+      "showClosed": true,
+      "unreadFirst": false,
+      "defaultAccount": ""
+    },
+    "schema": [
+      {
+        "key": "language",
+        "type": "enum",
+        "label": "Language",
+        "defaultValue": "system",
+        "options": [
+          "system",
+          "en",
+          "nb"
+        ]
+      },
+      {
+        "key": "showCount",
+        "type": "boolean",
+        "label": "Show unread count",
+        "defaultValue": true
+      },
+      {
+        "key": "hideWhenClosed",
+        "type": "boolean",
+        "label": "Hide when all accounts are closed",
+        "defaultValue": false
+      },
+      {
+        "key": "showContext",
+        "type": "boolean",
+        "label": "Show window context",
+        "defaultValue": true
+      },
+      {
+        "key": "showClosed",
+        "type": "boolean",
+        "label": "Show closed accounts",
+        "defaultValue": true
+      },
+      {
+        "key": "unreadFirst",
+        "type": "boolean",
+        "label": "Put unread accounts first",
+        "defaultValue": false
+      }
+    ]
+  },
+  "license": "MIT"
+}
