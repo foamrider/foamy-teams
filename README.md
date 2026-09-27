@@ -2,7 +2,7 @@
 
 Microsoft Teams account switching and unread status.
 
-![Foamy Teams screenshot](screenshot.png)
+![Foamy Teams screenshot](preview.png)
 
 ## Install
 
@@ -74,6 +74,18 @@ omarchy plugin validate "$PWD"
 ```
 
 The screenshot uses demo accounts rendered by the plugin.
+
+## Remove
+
+```sh
+omarchy plugin remove foamy.teams
+```
+
+Browser profiles, Teams accounts, open windows, and sign-in sessions remain
+unchanged. Removing the widget does not sign out or delete browser data.
+
+Omarchy manages the plugin entry in `shell.json`. Packages and data outside
+the plugin directory are retained unless you remove them separately.
 
 ## License
 
