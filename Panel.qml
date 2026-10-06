@@ -140,6 +140,7 @@ Panel {
         Keys.onEscapePressed: { if (root.editingSettings && settingsPane.editing) settingsPane.editing=false; else if (root.editingSettings) root.closeSettings(); else root.close() }
         TeamsView {
           id: view
+          cornerRadius: Math.max(0, popup.cornerRadius - Border.top(popup.borderSpec))
           visible: !root.editingSettings
           width: parent.width
           accounts: root.displayed; summary: root.summary; language: root.language; configured: root.definitions.length>0

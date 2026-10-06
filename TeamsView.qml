@@ -5,6 +5,7 @@ import "Preferences.js" as Preferences
 
 Column {
   id: root
+  property real cornerRadius: Style.cornerRadius * 2
   required property var accounts
   required property var summary
   required property string language
@@ -54,7 +55,7 @@ Column {
       onPaint: {
         var ctx = getContext("2d")
         ctx.reset()
-        var radius = Style.space(13)
+        var radius = Math.min(width / 2, height, root.cornerRadius)
         ctx.beginPath()
         ctx.moveTo(radius, 0); ctx.lineTo(width - radius, 0)
         ctx.quadraticCurveTo(width, 0, width, radius)
@@ -68,6 +69,10 @@ Column {
         glow.addColorStop(0, Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.17))
         glow.addColorStop(1, "transparent")
         ctx.fillStyle = glow; ctx.fillRect(0, 0, width, height)
+      }
+      Connections {
+        target: root
+        function onCornerRadiusChanged() { headerBackground.requestPaint() }
       }
       Connections {
         target: Color
@@ -126,7 +131,7 @@ Column {
         Rectangle {
           anchors.fill: parent
           anchors.topMargin: Style.space(4); anchors.bottomMargin: Style.space(4)
-          radius: Style.space(8)
+          radius: Style.cornerRadius * 2
           color: hover.containsMouse || row.activeFocus ? Qt.alpha(root.foreground,0.05) : "transparent"
           border.width: row.activeFocus ? 1 : 0
           border.color: Color.accent
@@ -150,7 +155,7 @@ Column {
               Layout.alignment: Qt.AlignRight
               implicitWidth: status.implicitWidth
               implicitHeight: status.implicitHeight
-              radius: Style.space(6)
+              radius: Style.cornerRadius * 2
               color: hasUnread ? Qt.alpha(Color.urgent, 0.16) : "transparent"
               Label {
                 id: status

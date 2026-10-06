@@ -59,7 +59,7 @@ Column {
   component Field: Controls.TextField {
     color: Color.popups.text; font.family: "sans-serif"; font.pixelSize: Style.space(13); selectByMouse: true
     implicitHeight: Style.space(36)
-    background: Rectangle { color: Qt.alpha(Color.popups.text,0.035); radius: Style.space(7); border.width: 1; border.color: parent.activeFocus ? Color.accent : Qt.alpha(Color.popups.text,0.2) }
+    background: Rectangle { color: Qt.alpha(Color.popups.text,0.035); radius: Style.cornerRadius * 2; border.width: 1; border.color: parent.activeFocus ? Color.accent : Qt.alpha(Color.popups.text,0.2) }
   }
   RowLayout {
     width: parent.width-root.padding*2
@@ -91,7 +91,7 @@ Column {
           spacing: Style.space(10)
           Rectangle {
             Layout.preferredWidth: Style.space(34); Layout.preferredHeight: Style.space(34)
-            radius: Style.space(9)
+            radius: Style.cornerRadius * 2
             color: Qt.alpha(Color.popups.text,0.06)
             Label { anchors.centerIn: parent; text: accountRow.modelData.name.slice(0,1).toUpperCase(); color: root.secondary; font.pixelSize: Style.space(14) }
           }
@@ -120,7 +120,7 @@ Column {
       model: [{key:"showCount",label:"Show unread count in the bar"},{key:"hideWhenClosed",label:"Hide when all accounts are closed"},{key:"showContext",label:"Show window context"},{key:"showClosed",label:"Show closed accounts"},{key:"unreadFirst",label:"Put unread accounts first"}]
       Toggle {
         required property var modelData
-        width: parent.width; implicitHeight: Style.space(36); color: "transparent"; borderSpec: activeFocus ? Border.flat(Color.accent,1) : Border.none(); radius: Style.space(7)
+        width: parent.width; implicitHeight: Style.space(36); color: "transparent"; borderSpec: activeFocus ? Border.flat(Color.accent,1) : Border.none(); radius: Style.cornerRadius * 2
         fontFamily: "sans-serif"; titleSize: Style.space(12); label: root.tr(modelData.label); checked: Preferences.value(root.settings,modelData.key)
         onClicked: root.save(modelData.key,!checked)
       }
@@ -147,7 +147,7 @@ Column {
     Label { text: root.tr("Application ID") }
     Field { width: parent.width; text: root.draft.appId || ""; Accessible.name: root.tr("Application ID"); onTextEdited: root.change("appId",text) }
     Label { visible: !!root.draft.appId && !root.windows.some(function(w) { return w.appId.toLowerCase()===root.draft.appId.toLowerCase() }); text: root.tr("No matching window yet"); color: root.secondary; font.pixelSize: Style.space(11) }
-    Toggle { width: parent.width; implicitHeight: Style.space(36); color: "transparent"; borderSpec: activeFocus ? Border.flat(Color.accent,1) : Border.none(); radius: Style.space(7); label: root.tr("Enabled"); fontFamily: "sans-serif"; titleSize: Style.space(13); checked: root.draft.enabled===true; onClicked: root.change("enabled",!checked) }
+    Toggle { width: parent.width; implicitHeight: Style.space(36); color: "transparent"; borderSpec: activeFocus ? Border.flat(Color.accent,1) : Border.none(); radius: Style.cornerRadius * 2; label: root.tr("Enabled"); fontFamily: "sans-serif"; titleSize: Style.space(13); checked: root.draft.enabled===true; onClicked: root.change("enabled",!checked) }
     Label { text: root.tr("Browser executable") }
     Field { width: parent.width; text: root.draft.browser || ""; Accessible.name: root.tr("Browser executable"); onTextEdited: root.change("browser",text) }
     Label { text: root.tr("Browser profile") }
