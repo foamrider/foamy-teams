@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
-import "Preferences.js" as Preferences
 
 Column {
   id: root
@@ -16,7 +15,7 @@ Column {
   property int cursorIndex: -1
   signal activate(var account)
   signal settingsRequested()
-  function tr(label, values) { return Preferences.text(label, language, values) }
+  function tr(label, values) { return FoamyI18n.t(label, values) }
   function move(direction) {
     if (!accounts.length) { settingsButton.forceActiveFocus(); return }
     cursorIndex = cursorIndex < 0 ? (direction > 0 ? 0 : accounts.length-1) : (cursorIndex+direction+accounts.length)%accounts.length

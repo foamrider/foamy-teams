@@ -14,7 +14,7 @@ Panel {
   ipcTarget: "foamy.teams"
   manageIpc: false
   readonly property bool vertical: bar ? bar.vertical : false
-  readonly property string language: Preferences.language(preference("language"),Qt.locale().name)
+  readonly property string language: FoamyI18n.language
   // Normalize Qt-backed settings lists before validating them as JSON arrays.
   readonly property var preferences: JSON.parse(JSON.stringify(root.settings || {}))
   readonly property var definitions: preference("accounts")
@@ -26,7 +26,7 @@ Panel {
   property string savingKey: ""
   property int generation: 0
   function preference(key) { return Preferences.value(preferences,key) }
-  function tr(label,values) { return Preferences.text(label,language,values) }
+  function tr(label,values) { return FoamyI18n.t(label, values) }
   readonly property var windows: {
     var revision=generation
     var values=ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []

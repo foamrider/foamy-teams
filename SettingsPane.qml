@@ -23,7 +23,7 @@ Column {
   readonly property color secondary: Qt.tint(Color.popups.background,Qt.alpha(Color.popups.text,0.7))
   signal save(string key,var value)
   signal back()
-  function tr(label) { return Preferences.text(label,language) }
+  function tr(label) { return FoamyI18n.t(label) }
   function focusBack() { backButton.forceActiveFocus() }
   function edit(account) {
     adding=!account
@@ -111,11 +111,7 @@ Column {
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.alpha(Color.popups.text,0.1) }
       }
     }
-    TeamsDropdown {
-      width: parent.width; fontFamily: "sans-serif"; label: root.tr("Language"); value: Preferences.value(root.settings,"language")
-      options: [{value:"system",label:root.tr("System")},{value:"en",label:"English"},{value:"nb",label:"Norsk bokmål"}]
-      onChanged: function(value) { root.save("language",value) }
-    }
+
     Repeater {
       model: [{key:"showCount",label:"Show unread count in the bar"},{key:"hideWhenClosed",label:"Hide when all accounts are closed"},{key:"showContext",label:"Show window context"},{key:"showClosed",label:"Show closed accounts"},{key:"unreadFirst",label:"Put unread accounts first"}]
       Toggle {
