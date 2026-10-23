@@ -1,3 +1,4 @@
+const I18n = require('./i18n.cjs');
 const assert=require('node:assert/strict')
 const M=require('../Model.js')
 const P=require('../Preferences.js')
@@ -9,8 +10,7 @@ for(const accounts of [null,{},[null],[{...definitions[0],command:'sh -c bad'}],
 assert.deepEqual(P.value({},'accounts'),[])
 assert.equal(P.valid('hideWhenClosed','false'),false)
 assert.equal(P.valid('__proto__',true),false)
-assert.equal(P.language('system','nb_NO'),'nb')
-assert.equal(P.text('%1 unread','nb',['$&']),'$& uleste')
+assert.equal(I18n.text('%1 unread','nb',['$&']),'$& uleste')
 assert.deepEqual(M.titleState('(12) Chat | Team | Microsoft Teams'),{unread:12,context:'Chat | Team'})
 assert.equal(M.titleState('Chat | Microsoft Teams').unread,0)
 for(const title of ['', 'Loading…', 'Sign in | Microsoft Teams', '(99) unrelated', '(9007199254740992) Microsoft Teams']) assert.equal(M.titleState(title).unread,null)

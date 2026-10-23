@@ -35,7 +35,7 @@ settings, and Escape to go back or close.
 
 Rename, reorder, disable, or remove accounts in the cog menu. Configure the bar
 count, visibility when all accounts are closed, window context, closed-account
-rows, unread-first sorting, default account, and English or Norwegian language.
+rows, unread-first sorting, and default account.
 Settings are saved on the `foamy.teams` widget entry in Omarchy's `shell.json`.
 No accounts or machine-specific profiles are included in the plugin defaults.
 
@@ -93,3 +93,7 @@ Licensed under [MIT](LICENSE), with [Omarchy](LICENSE-OMARCHY) and
 [Lucide](LICENSE-LUCIDE) notices.
 
 Provided **as is**, without warranty or guaranteed support. Use at your own risk.
+
+Language follows **Omarchy → Setup → Language** on Omarchy 4.5. Plugin language overrides are no longer used. Omarchy 4.0 displays the plugin in English. Missing translations fall back to English.
+
+Translation checks: `python3 tests/i18n-runtime.py` uses the installed shell. Set `OMARCHY_PATH` to a 4.5 source tree to check live language switching against that version.

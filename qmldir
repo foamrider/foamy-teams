@@ -1,0 +1,8 @@
+singleton FoamyI18n 1.0 FoamyI18n.qml
+Panel 1.0 Panel.qml
+SettingsPane 1.0 SettingsPane.qml
+TeamsAction 1.0 TeamsAction.qml
+TeamsDropdown 1.0 TeamsDropdown.qml
+TeamsIcon 1.0 TeamsIcon.qml
+TeamsPopup 1.0 TeamsPopup.qml
+TeamsView 1.0 TeamsView.qml
