@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "foamy.teams",
   "name": "Foamy Teams",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "foamrider",
   "description": "Configurable Teams account launcher and window-title unread status",
   "kinds": [
@@ -21,7 +21,7 @@
       "accounts": [],
       "showCount": true,
       "hideWhenClosed": false,
-      "showContext": true,
+      "showContext": false,
       "showClosed": true,
       "unreadFirst": false,
       "defaultAccount": ""
@@ -30,7 +30,7 @@
       {
         "key": "showCount",
         "type": "boolean",
-        "label": "Show unread count",
+        "label": "Show unread count in the bar",
         "defaultValue": true
       },
       {
@@ -43,7 +43,7 @@
         "key": "showContext",
         "type": "boolean",
         "label": "Show window context",
-        "defaultValue": true
+        "defaultValue": false
       },
       {
         "key": "showClosed",

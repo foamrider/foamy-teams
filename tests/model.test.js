@@ -10,7 +10,7 @@ for(const accounts of [null,{},[null],[{...definitions[0],command:'sh -c bad'}],
 assert.deepEqual(P.value({},'accounts'),[])
 assert.equal(P.valid('hideWhenClosed','false'),false)
 assert.equal(P.valid('__proto__',true),false)
-assert.equal(I18n.text('%1 unread','nb',['$&']),'$& uleste')
+assert.equal(I18n.tn('%1 unread',2,'nb'),'2 uleste')
 assert.deepEqual(M.titleState('(12) Chat | Team | Microsoft Teams'),{unread:12,context:'Chat | Team'})
 assert.equal(M.titleState('Chat | Microsoft Teams').unread,0)
 for(const title of ['', 'Loading…', 'Sign in | Microsoft Teams', '(99) unrelated', '(9007199254740992) Microsoft Teams']) assert.equal(M.titleState(title).unread,null)
@@ -30,4 +30,26 @@ assert.equal(M.candidates([first,focused]).length,1)
 assert.deepEqual(M.launchArguments(definitions[0]),['omarchy-launch-webapp','https://teams.microsoft.com','--profile-directory=Work'])
 assert.deepEqual(M.launchArguments({...definitions[0],browser:'chromium',profile:''}),['chromium','--app=https://teams.microsoft.com'])
 assert.deepEqual(M.launchArguments({...definitions[0],command:['client','$(touch nope)']}),['client','$(touch nope)'])
+// Only configured, enabled application IDs are tracked (lower-case, unique).
+assert.deepEqual(M.trackedAppIds([...definitions,{...account('off','Other'),enabled:false},account('dup','TEAMS-WORK')]),['teams-personal','teams-work'])
+assert.equal(M.tracked(['teams-work'],'Teams-Work'),true)
+assert.equal(M.tracked(['teams-work'],'kitty'),false)
+// The settled publish compares titles/focus only; an unchanged snapshot is not republished.
+assert.equal(M.signature([first]),M.signature([{...first,toplevel:'other'}]))
+assert.notEqual(M.signature([first]),M.signature([{...first,title:'(6) Chat | Microsoft Teams'}]))
+// Window context is private by default (screen sharing).
+assert.equal(P.value({},'showContext'),false)
+assert.equal(P.defaults.showContext,false)
+// Saves queue instead of dropping: one entry per key, newest value, original order.
+let q=P.enqueue([],'showCount',false)
+q=P.enqueue(q,'showContext',true)
+q=P.enqueue(q,'showCount',true)
+assert.deepEqual(q,[{key:'showContext',value:true},{key:'showCount',value:true}])
+// Saved-but-unreflected values overlay the entry until the shell catches up.
+assert.deepEqual(P.withOverlay({showCount:true,accounts:[]},{showCount:false}),{showCount:false,accounts:[]})
+assert.deepEqual(P.settledOverlay({showCount:false},{showCount:false,unreadFirst:true}),{unreadFirst:true})
+const overlay={unreadFirst:true}
+assert.equal(P.settledOverlay({},overlay),overlay)
+const manifest=require('../manifest.json')
+for (const field of P.fields) assert.equal(JSON.stringify(manifest.barWidget.defaults[field.key]),JSON.stringify(field.defaultValue),field.key)
 console.log('Teams model, configuration, matching, deduplication and argv tests passed')

@@ -49,10 +49,22 @@ function candidates(windows) {
     return true
   }).map(function(w) { return {value:w.appId,label:w.appId} })
 }
+// Lower-case application IDs of the enabled accounts: the only windows whose
+// titles the widget reads.
+function trackedAppIds(definitions) {
+  var seen={}
+  return (definitions || []).filter(function(d) { return d && d.enabled && text(d.appId) }).map(function(d) { return d.appId.toLowerCase() })
+    .filter(function(id) { if (seen[id]) return false; seen[id]=true; return true }).sort()
+}
+function tracked(appIds, appId) { return (appIds || []).indexOf(text(appId).toLowerCase()) >= 0 }
+// Comparable form of a window snapshot (identity is compared separately).
+function signature(windows) {
+  return JSON.stringify((windows || []).map(function(w) { return [text(w.appId), text(w.title), w.activated === true] }))
+}
 function launchArguments(account) {
   if (account.command.length) return account.command.slice()
   var args=account.browser === "omarchy-launch-webapp" ? [account.browser,account.url] : [account.browser,"--app="+account.url]
   if (account.profile) args.push("--profile-directory="+account.profile)
   return args
 }
-if (typeof module !== "undefined") module.exports={titleState:titleState,accountsForWindows:accountsForWindows,summary:summary,primaryAccount:primaryAccount,displayedAccounts:displayedAccounts,candidates:candidates,launchArguments:launchArguments}
+if (typeof module !== "undefined") module.exports={titleState:titleState,accountsForWindows:accountsForWindows,summary:summary,primaryAccount:primaryAccount,displayedAccounts:displayedAccounts,candidates:candidates,trackedAppIds:trackedAppIds,tracked:tracked,signature:signature,launchArguments:launchArguments}
