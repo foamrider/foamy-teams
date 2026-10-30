@@ -99,7 +99,8 @@ PanelKeyCatcher {
       width: list.width
       bottomPadding: FoamyStyle.padding
 
-      FoamyHeader {
+      // Title-only band (list panel): no hero content.
+      FoamyHeroBand {
         width: parent.width
         iconName: "message-square"
         title: "Microsoft Teams"
@@ -108,6 +109,8 @@ PanelKeyCatcher {
         onSettingsClicked: root.settingsRequested()
         onSettingsHovered: function(hovered) { if (hovered) cursor.hover(root.settingsStop) }
       }
+
+      Item { width: 1; height: FoamyStyle.gap }
 
       Column {
         x: FoamyStyle.padding
