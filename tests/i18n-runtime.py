@@ -17,9 +17,8 @@ with tempfile.TemporaryDirectory(prefix='foamy-language-test-') as directory:
     app.mkdir()
     plugin = app / 'plugin'
     plugin.mkdir()
-    shutil.copy(source / 'FoamyI18n.qml', plugin)
+    shutil.copytree(source / 'kit', plugin / 'kit')
     shutil.copytree(source / 'i18n', plugin / 'i18n')
-    (plugin / 'qmldir').write_text('singleton FoamyI18n 1.0 FoamyI18n.qml\n')
     # The added catalog entry exists only in this fixture, never in a release.
     en = json.loads((plugin / 'i18n/en.json').read_text())
     en['English only'] = 'English only'
@@ -32,7 +31,7 @@ with tempfile.TemporaryDirectory(prefix='foamy-language-test-') as directory:
     qml = '''import QtQuick
 import Quickshell
 import Quickshell.Io
-import "plugin" as Plugin
+import "plugin/kit" as Plugin
 ShellRoot {
   property var translator: Plugin.FoamyI18n
   property string rendered: translator.t(KEY)
@@ -46,6 +45,7 @@ ShellRoot {
       if (translator.t("English only") !== "English only" || translator.t("Unknown label") !== "Unknown label") { Qt.exit(2); return }
       if (translator.t("Name %1 {name}", ["$& %2"]) !== "Name $& %2 {name}") { Qt.exit(3); return }
       if (translator.t("Name {name}", {name: "$& {name}"}) !== "Name $& {name}") { Qt.exit(4); return }
+      if (step === 2 && translator.tn("%1 unread messages", 1) !== "1 unread message") { console.error("plural", translator.tn("%1 unread messages", 1)); Qt.exit(5); return }
       if (step === 0) choice.setText("da")
       else if (step === 1) choice.setText("en")
       else { console.log("I18N_RUNTIME_PASS", NATIVE ? "4.5 live no/da/en" : "4.0 English fallback"); Qt.quit() }

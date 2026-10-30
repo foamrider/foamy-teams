@@ -1,181 +1,253 @@
 import QtQuick
+import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
+import qs.Ui
+import "kit"
 
-Column {
+// The popup body: header, account rows on one keyboard/pointer cursor, and
+// the settings page. Data comes in through properties so the preview can feed
+// mock states; the Panel owns window tracking, launching and saving.
+PanelKeyCatcher {
   id: root
-  property real cornerRadius: Style.cornerRadius * 2
-  required property var accounts
-  required property var summary
-  required property string language
+
+  property var accounts: []
+  property var summary: ({ totalUnread: 0, runningCount: 0, unknownCount: 0, accountCount: 0 })
+  property string heading: ""
   property bool configured: false
-  property bool showContext: true
+  property bool showContext: false
   property string error: ""
   property string launchingId: ""
-  property int cursorIndex: -1
+  property bool editingSettings: false
+  property var settings: ({})
+  property var candidates: []
+  property bool saving: false
+  property string settingsError: ""
+  property bool retryable: false
+
   signal activate(var account)
   signal settingsRequested()
-  function tr(label, values) { return FoamyI18n.t(label, values) }
-  function move(direction) {
-    if (!accounts.length) { settingsButton.forceActiveFocus(); return }
-    cursorIndex = cursorIndex < 0 ? (direction > 0 ? 0 : accounts.length-1) : (cursorIndex+direction+accounts.length)%accounts.length
-    accountRepeater.itemAt(cursorIndex).forceActiveFocus()
+  signal settingsBack()
+  signal closeRequestedByView()
+  signal switchPanelRequested(int direction)
+  signal saveRequested(string key, var value)
+  signal retryRequested()
+
+  readonly property int settingsStop: accounts.length
+  readonly property string subtitle: summary.accountCount === 0
+    ? FoamyI18n.t(configured ? "Enable an account in Settings" : "Add your Teams accounts in Settings") : ""
+
+  function panelOpened() {
+    cursor.reset()
+    list.contentY = 0
+    if (editingSettings) settingsPane.focusBack()
+    else root.forceActiveFocus()
   }
-  readonly property color foreground: Color.popups.text
-  readonly property color secondary: Qt.tint(Color.popups.background, Qt.alpha(foreground, 0.7))
-  readonly property bool lightTheme: Color.popups.background.r + Color.popups.background.g + Color.popups.background.b > 1.5
-  readonly property color runningColor: lightTheme ? "#3b6b30" : "#a6e3a1"
-  readonly property string heading: summary.accountCount === 0 ? tr(configured ? "All accounts are disabled" : "No accounts configured")
-    : summary.totalUnread > 0 ? tr(summary.totalUnread === 1 ? "%1 unread message" : "%1 unread messages", [summary.totalUnread])
-    : summary.runningCount === 0 ? tr("Teams is not running")
-    : summary.unknownCount > summary.accountCount - summary.runningCount ? "Microsoft Teams" : tr("All read")
-  readonly property string subtitle: summary.accountCount === 0 ? tr(configured ? "Enable an account in Settings" : "Add your Teams accounts in Settings") : ""
-  Keys.onPressed: function(event) {
-    if ([Qt.Key_Down,Qt.Key_J,Qt.Key_Up,Qt.Key_K].indexOf(event.key)>=0) { move(event.key===Qt.Key_Down || event.key===Qt.Key_J ? 1 : -1); event.accepted=true }
-    else if (event.key===Qt.Key_S) { settingsRequested(); event.accepted=true }
+  function settingsOpened() { settingsPane.resetScroll(); settingsPane.focusBack() }
+  function settingsClosed() { list.contentY = 0; root.forceActiveFocus() }
+  function saved(key) { settingsPane.saved(key) }
+  function editAccount(account) { settingsPane.edit(account) }
+  function activateCursor() {
+    if (cursor.index >= 0 && cursor.index < accounts.length) root.activate(accounts[cursor.index])
+    else if (cursor.index === settingsStop) root.settingsRequested()
   }
+  // Keep the keyboard cursor's row in view.
+  function reveal(index) {
+    var row = accountRepeater.itemAt(index)
+    if (!row) { if (index === settingsStop) list.contentY = 0; return }
+    var y = row.mapToItem(list.contentItem, 0, 0).y
+    if (y < list.contentY) list.contentY = Math.max(0, y - FoamyStyle.gap)
+    else if (y + row.height > list.contentY + list.height)
+      list.contentY = Math.min(list.contentHeight - list.height, y + row.height - list.height + FoamyStyle.gap)
+  }
+
+  implicitWidth: FoamyStyle.popupWidth
+  implicitHeight: editingSettings ? settingsPane.implicitHeight : content.implicitHeight
+  blocked: editingSettings
+
+  FoamyCursor { id: cursor; count: root.accounts.length + 1 }
+
+  onMoveRequested: function(dx, dy) { cursor.move(dy !== 0 ? dy : dx); root.reveal(cursor.index) }
+  onActivateRequested: root.activateCursor()
+  onCloseRequested: root.closeRequestedByView()
+  onTabRequested: function(direction) { root.switchPanelRequested(direction) }
+  onTextKey: function(text) { if (text === "s" || text === "S") root.settingsRequested() }
+
   component Label: Text {
     textFormat: Text.PlainText
-    font.family: "sans-serif"
-    font.pixelSize: Style.space(13)
-    color: root.foreground
+    horizontalAlignment: Text.AlignLeft
+    font.family: FoamyStyle.fontFamily
+    font.pixelSize: FoamyStyle.font.body
+    color: FoamyPalette.text
     wrapMode: Text.WordWrap
   }
-  Item {
-    width: parent.width
-    height: header.implicitHeight + Style.space(40)
 
-    // Use the same static, theme-derived header wash as clock and weather.
-    Canvas {
-      id: headerBackground
-      anchors.fill: parent
-      onWidthChanged: requestPaint()
-      onHeightChanged: requestPaint()
-      onPaint: {
-        var ctx = getContext("2d")
-        ctx.reset()
-        var radius = Math.min(width / 2, height, root.cornerRadius)
-        ctx.beginPath()
-        ctx.moveTo(radius, 0); ctx.lineTo(width - radius, 0)
-        ctx.arcTo(width, 0, width, radius, radius)
-        ctx.lineTo(width, height); ctx.lineTo(0, height); ctx.lineTo(0, radius)
-        ctx.arcTo(0, 0, radius, 0, radius); ctx.closePath(); ctx.clip()
-        var gradient = ctx.createLinearGradient(0, 0, width * 0.5, height)
-        gradient.addColorStop(0, Qt.tint(Color.popups.background, Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.08)))
-        gradient.addColorStop(1, Color.popups.background)
-        ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height)
-        var glow = ctx.createRadialGradient(width * 0.9, 0, 0, width * 0.9, 0, width * 0.85)
-        glow.addColorStop(0, Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.17))
-        glow.addColorStop(1, "transparent")
-        ctx.fillStyle = glow; ctx.fillRect(0, 0, width, height)
-      }
-      Connections {
-        target: root
-        function onCornerRadiusChanged() { headerBackground.requestPaint() }
-      }
-      Connections {
-        target: Color
-        function onAccentChanged() { headerBackground.requestPaint() }
-        function onShellValuesChanged() { headerBackground.requestPaint() }
-        function onBackgroundChanged() { headerBackground.requestPaint() }
-      }
-    }
+  Flickable {
+    id: list
+    visible: !root.editingSettings
+    anchors.fill: parent
+    contentWidth: width
+    contentHeight: content.implicitHeight
+    clip: true
+    boundsBehavior: Flickable.StopAtBounds
+    flickableDirection: Flickable.VerticalFlick
+    Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
+
     Column {
-      id: header
-      anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
-      anchors.margins: Style.space(20)
-      spacing: Style.space(8)
-      RowLayout {
+      id: content
+      width: list.width
+      bottomPadding: FoamyStyle.padding
+
+      FoamyHeader {
         width: parent.width
-        Text { text: "󰊻"; color: root.foreground; font.family: Style.font.family; font.pixelSize: Style.space(17) }
-        Label { text: "Microsoft Teams"; Layout.fillWidth: true; font.pixelSize: Style.space(13) }
-        TeamsAction { id: settingsButton; iconName: "settings"; foreground: root.secondary; tooltipText: root.tr("Settings"); onClicked: root.settingsRequested() }
+        iconName: "app-window"
+        title: "Microsoft Teams"
+        meta: root.heading
+        settingsHasCursor: cursor.at(root.settingsStop)
+        onSettingsClicked: root.settingsRequested()
+        onSettingsHovered: function(hovered) { if (hovered) cursor.hover(root.settingsStop) }
       }
-      Item { width: 1; height: Style.space(4) }
-      Label {
-        width: parent.width
-        textFormat: root.summary.totalUnread > 0 ? Text.StyledText : Text.PlainText
-        text: root.summary.totalUnread > 0
-          ? root.heading.replace(String(root.summary.totalUnread), '<font color="' + Color.urgent + '">' + root.summary.totalUnread + '</font>')
-          : root.heading
-        font.pixelSize: Style.space(21)
-      }
-      Label { visible: root.subtitle!==""; width: parent.width; text: root.subtitle; font.pixelSize: Style.space(12); color: root.secondary }
-    }
-  }
-  Column {
-    width: parent.width
-    padding: Style.space(20)
-    topPadding: Style.space(4)
-    bottomPadding: Style.space(8)
-    Label { visible: root.error!==""; width: parent.width-parent.padding*2; text: root.error; color: Color.urgent; Accessible.role: Accessible.AlertMessage }
-    Repeater {
-      id: accountRepeater
-      model: root.accounts
-      Rectangle {
-        id: row
-        required property var modelData
-        required property int index
-        width: parent.width-parent.padding*2
-        height: Style.space(root.showContext ? 76 : 58)
-        color: "transparent"
-        activeFocusOnTab: true
-        Accessible.role: Accessible.Button
-        Accessible.name: modelData.name+", "+status.text+", "+action.text
-        Accessible.onPressAction: root.activate(modelData)
-        Keys.onReturnPressed: root.activate(modelData)
-        Keys.onEnterPressed: root.activate(modelData)
-        Keys.onSpacePressed: root.activate(modelData)
-        onActiveFocusChanged: if (activeFocus) root.cursorIndex=index
-        Rectangle {
-          anchors.fill: parent
-          anchors.topMargin: Style.space(4); anchors.bottomMargin: Style.space(4)
-          radius: Style.cornerRadius * 2
-          color: hover.containsMouse || row.activeFocus ? Qt.alpha(root.foreground,0.05) : "transparent"
-          border.width: row.activeFocus ? 1 : 0
-          border.color: Color.accent
+
+      Column {
+        x: FoamyStyle.padding
+        width: parent.width - FoamyStyle.padding * 2
+        spacing: FoamyStyle.gap
+        bottomPadding: visible ? FoamyStyle.gap : 0
+        visible: root.subtitle !== "" || root.error !== "" || (root.accounts.length === 0 && root.summary.accountCount > 0)
+        Label {
+          visible: root.error !== ""
+          width: parent.width
+          text: root.error
+          color: Commons.Color.urgent
+          font.pixelSize: FoamyStyle.font.bodySmall
+          Accessible.role: Accessible.AlertMessage
+          Accessible.name: text
         }
-        RowLayout {
-          anchors.fill: parent
-          anchors.leftMargin: Style.space(12); anchors.rightMargin: Style.space(12)
-          spacing: Style.space(12)
-          Rectangle { Layout.preferredWidth: Style.space(2); Layout.preferredHeight: Style.space(34); radius: 1; color: row.modelData.running ? root.runningColor : Qt.alpha(root.foreground,0.3) }
-          ColumnLayout {
-            Layout.fillWidth: true
-            spacing: Style.space(3)
-            Label { Layout.fillWidth: true; text: row.modelData.name; elide: Text.ElideRight; wrapMode: Text.NoWrap; font.pixelSize: Style.space(15) }
-            Label { visible: root.showContext && row.modelData.running; Layout.fillWidth: true; text: row.modelData.running ? (row.modelData.context || "Microsoft Teams") : root.tr("Not running"); color: root.secondary; font.pixelSize: Style.space(12); elide: Text.ElideRight; wrapMode: Text.NoWrap }
-          }
-          ColumnLayout {
-            spacing: Style.space(3)
+        Label {
+          visible: root.subtitle !== ""
+          width: parent.width
+          text: root.subtitle
+          color: FoamyPalette.mutedText
+          font.pixelSize: FoamyStyle.font.bodySmall
+        }
+        Label {
+          visible: root.accounts.length === 0 && root.summary.accountCount > 0
+          width: parent.width
+          text: FoamyI18n.t("No visible accounts") + "\n" + FoamyI18n.t("Show closed accounts in Settings")
+          color: FoamyPalette.mutedText
+          font.pixelSize: FoamyStyle.font.bodySmall
+        }
+      }
+
+      Repeater {
+        id: accountRepeater
+        model: root.accounts
+        FoamyCursorSurface {
+          id: row
+          required property var modelData
+          required property int index
+          readonly property bool hasUnread: modelData.unread > 0
+          readonly property string statusText: modelData.unread === null ? "" : modelData.unread > 0
+            ? FoamyI18n.tn("%1 unread", modelData.unread) : FoamyI18n.t("No unread")
+          readonly property string actionText: root.launchingId === modelData.id ? FoamyI18n.t("Launching…")
+            : FoamyI18n.t(modelData.running ? "Focus" : "Launch")
+          x: FoamyStyle.gapLarge
+          width: content.width - FoamyStyle.gapLarge * 2
+          height: root.showContext ? Style.space(60) : Style.space(46)
+          foreground: FoamyPalette.text
+          hasCursor: cursor.at(index)
+          onHovered: cursor.hover(index)
+          onClicked: root.activate(modelData)
+          Accessible.role: Accessible.Button
+          Accessible.name: modelData.name + (statusText ? ", " + statusText : "") + ", " + actionText
+          Accessible.onPressAction: root.activate(modelData)
+
+          RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: FoamyStyle.rowPadding
+            anchors.rightMargin: FoamyStyle.rowPadding
+            spacing: FoamyStyle.rowPadding
+
+            // Running marker: theme green when the account has a window.
             Rectangle {
-              readonly property bool hasUnread: row.modelData.unread > 0
+              Layout.preferredWidth: Style.space(3)
+              Layout.preferredHeight: Style.space(26)
+              radius: FoamyStyle.pillRadius(width)
+              color: row.modelData.running ? FoamyPalette.onSurface(FoamyPalette.success) : FoamyPalette.divider
+            }
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: FoamyStyle.gapTiny
+              Label {
+                Layout.fillWidth: true
+                text: row.modelData.name
+                elide: Text.ElideRight
+                wrapMode: Text.NoWrap
+                font.pixelSize: FoamyStyle.font.subtitle
+              }
+              Label {
+                visible: root.showContext
+                Layout.fillWidth: true
+                text: row.modelData.running ? (row.modelData.context || "Microsoft Teams") : FoamyI18n.t("Not running")
+                color: FoamyPalette.secondaryText
+                font.pixelSize: FoamyStyle.font.caption
+                elide: Text.ElideRight
+                wrapMode: Text.NoWrap
+              }
+            }
+            Rectangle {
               visible: row.modelData.running && row.modelData.unread !== null
-              Layout.alignment: Qt.AlignRight
+              Layout.alignment: Qt.AlignVCenter
               implicitWidth: status.implicitWidth
               implicitHeight: status.implicitHeight
-              radius: Style.cornerRadius * 2
-              color: hasUnread ? Qt.alpha(Color.urgent, 0.16) : "transparent"
+              radius: FoamyStyle.pillRadius(height)
+              color: row.hasUnread ? Qt.alpha(Commons.Color.urgent, 0.16) : "transparent"
               Label {
                 id: status
-                text: row.modelData.unread === null ? "" : row.modelData.unread > 0
-                  ? root.tr(row.modelData.unread === 1 ? "1 unread" : "%1 unread", [row.modelData.unread]) : root.tr("No unread")
-                color: parent.hasUnread ? Color.urgent : root.secondary
-                font.pixelSize: Style.space(12)
-                font.weight: parent.hasUnread ? Font.DemiBold : Font.Normal
-                leftPadding: parent.hasUnread ? Style.space(8) : 0
+                text: row.statusText
+                wrapMode: Text.NoWrap
+                color: row.hasUnread ? Commons.Color.urgent : FoamyPalette.secondaryText
+                font.pixelSize: FoamyStyle.font.bodySmall
+                font.weight: row.hasUnread ? Font.DemiBold : Font.Normal
+                leftPadding: row.hasUnread ? FoamyStyle.gap : 0
                 rightPadding: leftPadding
-                topPadding: parent.hasUnread ? Style.space(3) : 0
+                topPadding: row.hasUnread ? FoamyStyle.gapTiny : 0
                 bottomPadding: topPadding
               }
             }
-            Label { id: action; Layout.alignment: Qt.AlignRight; text: (root.launchingId===row.modelData.id ? root.tr("Launching…") : root.tr(row.modelData.running ? "Focus" : "Launch")) + "  ↗"; color: root.secondary; font.pixelSize: Style.space(12) }
+            Label {
+              Layout.alignment: Qt.AlignVCenter
+              text: row.actionText
+              wrapMode: Text.NoWrap
+              color: FoamyPalette.secondaryText
+              font.pixelSize: FoamyStyle.font.bodySmall
+            }
+            FoamyIcon {
+              Layout.preferredWidth: FoamyStyle.iconSize - Style.space(3)
+              Layout.preferredHeight: Layout.preferredWidth
+              Layout.alignment: Qt.AlignVCenter
+              name: "external-link"
+              color: FoamyPalette.secondaryText
+            }
           }
         }
-        Rectangle { visible: row.index<root.accounts.length-1; anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.alpha(root.foreground,0.1) }
-        MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.activate(row.modelData) }
       }
     }
-    Label { visible: root.accounts.length===0 && root.summary.accountCount>0; width: parent.width-parent.padding*2; padding: Style.space(12); text: root.tr("No visible accounts")+"\n"+root.tr("Show closed accounts in Settings"); color: root.secondary }
+  }
+
+  SettingsPane {
+    id: settingsPane
+    visible: root.editingSettings
+    width: parent.width
+    height: parent.height
+    settings: root.settings
+    candidates: root.candidates
+    saving: root.saving
+    panelError: root.settingsError
+    retryable: root.retryable
+    onSave: function(key, value) { root.saveRequested(key, value) }
+    onBackToPanel: root.settingsBack()
+    onRetry: root.retryRequested()
   }
 }
