@@ -21,6 +21,7 @@
   "Choose a window or enter its application ID.": "Velg et vindu eller skriv inn applikasjons-ID-en.",
   "Copy": "Kopier",
   "Could not launch the account. Check its browser or launch arguments.": "Kunne ikke starte kontoen. Kontroller nettleser eller startargumenter.",
+  "Couldn't save the setting.": "Kunne ikke lagre innstillingen.",
   "Cut": "Klipp ut",
   "Edit": "Rediger",
   "Enabled": "Aktivert",

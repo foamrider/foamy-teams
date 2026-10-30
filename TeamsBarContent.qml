@@ -19,7 +19,7 @@ Row {
   OpticalGlyph {
     width: Style.bar.iconCanvas
     height: Style.bar.iconCanvas
-    text: "󰊻"
+    text: "\u{f02bb}"
     fontFamily: root.glyphFont
     fontSize: Style.font.body
     color: root.foreground

@@ -4,6 +4,7 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "kit"
+import "kit/FoamyPrefs.js" as Prefs
 import "Preferences.js" as Preferences
 import "Model.js" as Model
 
@@ -21,7 +22,7 @@ FoamySettingsPage {
   property string accountsBaseline: ""
   property bool adding: false
   property string commandDraft: "[]"
-  readonly property var definitions: Preferences.value(settings, "accounts")
+  readonly property var definitions: pref("accounts")
 
   signal save(string key, var value)
   signal backToPanel()
@@ -36,6 +37,7 @@ FoamySettingsPage {
   }
 
   function tr(label) { return FoamyI18n.t(label) }
+  function pref(key) { return Prefs.value(Preferences.fields, root.settings, key) }
   function leaveEditor() { editing = false; localError = ""; resetScroll(); focusBack() }
   function edit(account) {
     adding = !account
@@ -152,14 +154,15 @@ FoamySettingsPage {
         required property var modelData
         width: parent.width
         label: root.tr(modelData.label)
-        checked: Preferences.value(root.settings, modelData.key)
+        checked: root.pref(modelData.key)
         onClicked: root.save(modelData.key, !checked)
       }
     }
     FoamyDropdown {
+      objectName: "defaultAccount"
       width: parent.width
       label: root.tr("Middle-click account")
-      value: root.definitions.some(function(a) { return a.enabled && a.id === Preferences.value(root.settings, "defaultAccount") }) ? Preferences.value(root.settings, "defaultAccount") : ""
+      value: root.definitions.some(function(a) { return a.enabled && a.id === root.pref("defaultAccount") }) ? root.pref("defaultAccount") : ""
       options: [{ value: "", label: root.tr("Most relevant account") }].concat(root.definitions.filter(function(a) { return a.enabled }).map(function(a) { return { value: a.id, label: a.name } }))
       onChanged: function(value) { root.save("defaultAccount", value) }
     }
@@ -174,7 +177,7 @@ FoamySettingsPage {
       width: parent.width
       label: root.tr("Show window context")
       description: root.tr("Shows the chat or person name from each window title. Anyone watching a shared screen can read it.")
-      checked: Preferences.value(root.settings, "showContext")
+      checked: root.pref("showContext")
       onClicked: root.save("showContext", !checked)
     }
     Repeater {
@@ -183,7 +186,7 @@ FoamySettingsPage {
         required property var modelData
         width: parent.width
         label: root.tr(modelData.label)
-        checked: Preferences.value(root.settings, modelData.key)
+        checked: root.pref(modelData.key)
         onClicked: root.save(modelData.key, !checked)
       }
     }
@@ -199,6 +202,7 @@ FoamySettingsPage {
     FieldLabel { text: root.tr("Name") }
     SafeTextField { id: nameField; width: parent.width; text: root.draft.name || ""; translate: FoamyI18n.t; Accessible.name: root.tr("Name"); onTextEdited: root.change("name", text) }
     FoamyDropdown {
+      objectName: "appIdPicker"
       width: parent.width
       label: root.tr("Open Teams window")
       value: root.draft.appId || ""

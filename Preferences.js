@@ -1,9 +1,9 @@
 // Window context (the chat or person name from a Teams title) is off by default:
 // it is readable by anyone watching a shared screen while the popup is open.
 var defaults={accounts:[],showCount:true,hideWhenClosed:false,showContext:false,showClosed:true,unreadFirst:false,defaultAccount:""}
-// foamy-kit FoamyPrefs schema for the scalar settings; "accounts" is an array
-// validated by accountError() and saved through the same inline/CLI path.
+// foamy-kit FoamyPrefs schema (FoamyPrefsQueue saves and reads through it).
 var fields=[
+  {key:"accounts",type:"array",maxItems:32,defaultValue:[],validate:function(v) { var e=accountError(v); return e==="" ? true : e }},
   {key:"showCount",type:"boolean",defaultValue:true},
   {key:"hideWhenClosed",type:"boolean",defaultValue:false},
   {key:"showContext",type:"boolean",defaultValue:false},
@@ -31,33 +31,5 @@ function accountError(accounts) {
   }
   return ""
 }
-function valid(key,v) {
-  if (key==="accounts") return accountError(v)===""
-  if (key==="defaultAccount") return typeof v==="string" && v.length<=80
-  return Object.prototype.hasOwnProperty.call(defaults,key) && typeof defaults[key]==="boolean" && typeof v==="boolean"
-}
-function value(settings,key) { return settings && valid(key,settings[key]) ? settings[key] : defaults[key] }
 function configurationError(settings) { return settings && settings.accounts!==undefined ? accountError(settings.accounts) : "" }
-// Settings as last saved by this widget: the shell entry plus values whose
-// save succeeded but has not reached `settings` yet (CLI saves land later).
-function withOverlay(settings,overlay) {
-  var out={}
-  for (var k in settings || {}) out[k]=settings[k]
-  for (var o in overlay || {}) out[o]=overlay[o]
-  return out
-}
-// Drop overlay entries the shell entry now reflects.
-function settledOverlay(settings,overlay) {
-  var out={}, changed=false
-  for (var k in overlay || {}) {
-    if (settings && JSON.stringify(settings[k])===JSON.stringify(overlay[k])) changed=true
-    else out[k]=overlay[k]
-  }
-  return changed ? out : overlay
-}
-// Queue a save: one pending entry per key (the newest value wins), in order.
-function enqueue(queue,key,value) {
-  return (queue || []).filter(function(item) { return item.key!==key }).concat([{key:key,value:value}])
-}
-
-if (typeof module!=="undefined") module.exports={defaults:defaults,fields:fields,accountError:accountError,valid:valid,value:value,configurationError:configurationError,withOverlay:withOverlay,settledOverlay:settledOverlay,enqueue:enqueue}
+if (typeof module!=="undefined") module.exports={defaults:defaults,fields:fields,accountError:accountError,configurationError:configurationError}

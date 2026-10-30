@@ -72,7 +72,7 @@ PanelKeyCatcher {
   onActivateRequested: root.activateCursor()
   onCloseRequested: root.closeRequestedByView()
   onTabRequested: function(direction) { root.switchPanelRequested(direction) }
-  onTextKey: function(text) { if (text === "s" || text === "S") root.settingsRequested() }
+  onTextKey: function(text, modifiers) { if (cursor.plain(modifiers) && (text === "s" || text === "S")) root.settingsRequested() }
 
   component Label: Text {
     textFormat: Text.PlainText
@@ -101,7 +101,7 @@ PanelKeyCatcher {
 
       FoamyHeader {
         width: parent.width
-        iconName: "app-window"
+        iconName: "message-square"
         title: "Microsoft Teams"
         meta: root.heading
         settingsHasCursor: cursor.at(root.settingsStop)
