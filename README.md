@@ -6,8 +6,9 @@ Microsoft Teams account switching and unread status.
 
 ## Install
 
-Requires Omarchy Quattro with Quickshell's Wayland toplevel support, Python 3,
-and a browser or client that opens Teams in separate account windows.
+Requires Omarchy 4.5 (it also runs on 4.0.6) with Quickshell's Wayland
+toplevel support, Python 3, and a browser or client that opens Teams in
+separate account windows.
 No additional Python packages or Microsoft API credentials are required.
 
 ```sh
@@ -23,19 +24,25 @@ Remove the previous Teams widget from the bar when replacing it.
 3. Select the open Teams window, give the account a name, and set its browser profile.
 4. Select an account in the panel to focus its window or launch it.
 
-Unread counts appear in red badges. Green markers identify running accounts;
+Unread counts appear in red badges. Markers in the theme's green identify running accounts;
 closed accounts show **Launch**. Right-click the widget to open settings.
 Middle-click opens your selected default account, or the account with the most
 unread messages, preferring focused and running accounts when counts are equal.
 
-In the panel, use arrows or J/K to select accounts, Enter to open them, S for
-settings, and Escape to go back or close.
+In the panel, use the arrow keys or H/J/K/L to move the cursor, Enter or Space
+to open the selected account, S for settings, Tab or Shift+Tab to switch to the
+neighbouring bar panel, and Escape to close. In Settings, Tab moves between
+fields and Escape goes back.
 
 ### Settings
 
 Rename, reorder, disable, or remove accounts in the cog menu. Configure the bar
 count, visibility when all accounts are closed, window context, closed-account
-rows, unread-first sorting, and default account.
+rows, unread-first sorting, and the middle-click account.
+
+**Show window context** is off by default. When on, each running account shows
+the chat or person name from its window title, which anyone watching a shared
+screen can read while the panel is open.
 Settings are saved on the `foamy.teams` widget entry in Omarchy's `shell.json`.
 No accounts or machine-specific profiles are included in the plugin defaults.
 
@@ -63,17 +70,29 @@ Multiple windows for an account use the highest reported count to avoid double
 counting. Opening the panel does not mark messages read. Window changes update
 reactively, without polling or background Teams requests.
 
+Only windows whose application ID belongs to an enabled account are read; other
+windows' titles are never inspected (the Settings window picker lists
+application IDs only while Settings is open). Title changes are coalesced for
+250 ms, and one tracker serves every monitor's bar.
+
 ## Development
 
 With Node.js and Python 3 installed, run:
 
 ```sh
 node tests/model.test.js
+node tests/i18n.test.cjs
 python3 -m unittest discover -s tests -p 'test_*.py'
-omarchy plugin validate "$PWD"
+bash tests/kit-check.sh
+python3 tests/i18n-runtime.py
+python3 tests/runtime.py            # needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
+omarchy-plugin-validate "$PWD"
 ```
 
-The screenshot uses demo accounts rendered by the plugin.
+Shared components (popup, header, settings page, icons, i18n) come from
+[foamy-kit](https://github.com/foamrider/foamy-kit) as stamped copies in `kit/`;
+don't edit them here. `preview/Preview.qml` renders mock states with the kit's
+preview harness; the screenshot uses demo accounts.
 
 ## Remove
 
