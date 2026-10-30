@@ -111,7 +111,20 @@ ShellRoot {
         var lines = logView.text().trim().split("\n")
         if (!check(lines.length === 2, "two CLI saves, got " + JSON.stringify(lines))) return
         if (!check(lines[0] === "bar set foamy.teams unreadFirst true --json" && lines[1] === "bar set foamy.teams showClosed false --json", "CLI order: " + JSON.stringify(lines))) return
-        if (!check(!two.saving && two.settingsError === "", "queue drained without error")) return
+        if (!check(!two.saving && two.prefs.error === "", "queue drained without error")) return
+        // Dropdowns stay bound after a pick (kit 0.2.0 no longer assigns value).
+        var pick = shell.find(popup.bodyItem, "defaultAccount")
+        shell.inline = true
+        pick.changed("work")
+        if (!check(pick.value === "work", "middle-click dropdown follows the saved value, got " + pick.value)) return
+        popup.bodyItem.editAccount(shell.accounts[0])
+        break
+      case 7:
+        var picker = shell.find(popup.bodyItem, "appIdPicker")
+        picker.changed("teams-other")
+        if (!check(picker.value === "teams-other", "picker shows the chosen window, got " + picker.value)) return
+        popup.bodyItem.editAccount(shell.accounts[0])   // reopen the editor: draft resets
+        if (!check(picker.value === "teams-work", "picker follows the draft after reopening, got " + picker.value)) return
         one.closeSettings(); one.close()
         console.log("FOAMY DONE")
         Qt.quit()
@@ -119,6 +132,13 @@ ShellRoot {
     }
   }
   property real width0: 0
+  function find(item, name) {
+    if (!item) return null
+    if (item.objectName === name) return item
+    var kids = item.children || []
+    for (var i = 0; i < kids.length; i++) { var hit = find(kids[i], name); if (hit) return hit }
+    return null
+  }
   FileView { id: logView; blockLoading: true; printErrors: false }
 }
 '''
