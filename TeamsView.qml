@@ -105,7 +105,7 @@ PanelKeyCatcher {
       // Title-only band (list panel): no hero content.
       FoamyHeroBand {
         width: parent.width
-        iconName: "message-square"
+        iconGlyph: "\u{f02bb}"   // nf-md-microsoft_teams, as the bar widget
         title: "Microsoft Teams"
         meta: root.heading
         settingsHasCursor: cursor.at(root.settingsStop)
