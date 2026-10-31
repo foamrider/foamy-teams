@@ -94,6 +94,9 @@ PanelKeyCatcher {
     flickableDirection: Flickable.VerticalFlick
     Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
 
+    // A wheel notch scrolls about three rows, however the mouse splits it.
+    FoamyWheelScroll { target: list }
+
     Column {
       id: content
       width: list.width
