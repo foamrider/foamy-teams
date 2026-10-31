@@ -114,6 +114,7 @@ ShellRoot {
         if (!check(!two.saving && two.prefs.error === "", "queue drained without error")) return
         // Dropdowns stay bound after a pick (kit 0.2.0 no longer assigns value).
         var pick = shell.find(popup.bodyItem, "defaultAccount")
+        if (!check(pick.compact, "middle-click account uses the settings row form")) return
         shell.inline = true
         pick.changed("work")
         if (!check(pick.value === "work", "middle-click dropdown follows the saved value, got " + pick.value)) return

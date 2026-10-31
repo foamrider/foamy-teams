@@ -160,6 +160,7 @@ FoamySettingsPage {
     FoamyDropdown {
       objectName: "defaultAccount"
       width: parent.width
+      compact: true
       label: root.tr("Middle-click account")
       value: root.definitions.some(function(a) { return a.enabled && a.id === root.pref("defaultAccount") }) ? root.pref("defaultAccount") : ""
       options: [{ value: "", label: root.tr("Most relevant account") }].concat(root.definitions.filter(function(a) { return a.enabled }).map(function(a) { return { value: a.id, label: a.name } }))
