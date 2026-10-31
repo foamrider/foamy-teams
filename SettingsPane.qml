@@ -137,7 +137,7 @@ FoamySettingsPage {
       focusable: true
       label: root.tr("Add account")
       iconName: "plus"
-      foreground: Commons.Color.accent
+      foreground: FoamyPalette.secondaryText
       enabled: root.definitions.length < 32
       onClicked: root.edit(null)
     }
