@@ -77,6 +77,8 @@ application IDs only while Settings is open). Title changes are coalesced for
 
 ## Development
 
+`kit/` holds shared components copied from [foamy-kit](https://github.com/foamrider/foamy-kit); edit them there, not here.
+
 With Node.js and Python 3 installed, run:
 
 ```sh
