@@ -133,11 +133,10 @@ FoamySettingsPage {
       color: FoamyPalette.mutedText
       font.pixelSize: FoamyStyle.font.bodySmall
     }
-    FoamyAction {
+    FoamyButton {
       focusable: true
-      label: root.tr("Add account")
+      text: root.tr("Add account")
       iconName: "plus"
-      foreground: FoamyPalette.secondaryText
       enabled: root.definitions.length < 32
       onClicked: root.edit(null)
     }
