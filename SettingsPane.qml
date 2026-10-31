@@ -78,10 +78,13 @@ FoamySettingsPage {
     font.pixelSize: FoamyStyle.font.body
     wrapMode: Text.WordWrap
   }
+  // The kit's label-above style (FoamyDropdown, FoamyTextSettingField).
   component FieldLabel: Label {
     width: parent.width
     color: FoamyPalette.secondaryText
+    font.family: FoamyStyle.fontFamily
     font.pixelSize: FoamyStyle.font.bodySmall
+    font.bold: true
   }
 
   // --- account list and options -------------------------------------------
