@@ -1,4 +1,16 @@
-var defaults={accounts:[],showCount:true,hideWhenClosed:false,showContext:true,showClosed:true,unreadFirst:false,defaultAccount:""}
+// Window context (the chat or person name from a Teams title) is off by default:
+// it is readable by anyone watching a shared screen while the popup is open.
+var defaults={accounts:[],showCount:true,hideWhenClosed:false,showContext:false,showClosed:true,unreadFirst:false,defaultAccount:""}
+// foamy-kit FoamyPrefs schema (FoamyPrefsQueue saves and reads through it).
+var fields=[
+  {key:"accounts",type:"array",maxItems:32,defaultValue:[],validate:function(v) { var e=accountError(v); return e==="" ? true : e }},
+  {key:"showCount",type:"boolean",defaultValue:true},
+  {key:"hideWhenClosed",type:"boolean",defaultValue:false},
+  {key:"showContext",type:"boolean",defaultValue:false},
+  {key:"showClosed",type:"boolean",defaultValue:true},
+  {key:"unreadFirst",type:"boolean",defaultValue:false},
+  {key:"defaultAccount",type:"string",maxLength:80,defaultValue:""}
+]
 function accountError(accounts) {
   if (!Array.isArray(accounts) || accounts.length>32) return "Use at most 32 accounts."
   var ids={}, appIds={}
@@ -19,12 +31,5 @@ function accountError(accounts) {
   }
   return ""
 }
-function valid(key,v) {
-  if (key==="accounts") return accountError(v)===""
-  if (key==="defaultAccount") return typeof v==="string" && v.length<=80
-  return Object.prototype.hasOwnProperty.call(defaults,key) && typeof defaults[key]==="boolean" && typeof v==="boolean"
-}
-function value(settings,key) { return settings && valid(key,settings[key]) ? settings[key] : defaults[key] }
 function configurationError(settings) { return settings && settings.accounts!==undefined ? accountError(settings.accounts) : "" }
-
-if (typeof module!=="undefined") module.exports={defaults:defaults,accountError:accountError,valid:valid,value:value,configurationError:configurationError,}
+if (typeof module!=="undefined") module.exports={defaults:defaults,fields:fields,accountError:accountError,configurationError:configurationError}
