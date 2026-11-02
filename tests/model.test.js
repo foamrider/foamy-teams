@@ -55,4 +55,11 @@ assert.equal(second.settings.showContext,true)
 assert.equal(JSON.stringify(second.settings.accounts),JSON.stringify(definitions))
 const manifest=require('../manifest.json')
 for (const field of P.fields) assert.equal(JSON.stringify(manifest.barWidget.defaults[field.key]),JSON.stringify(field.defaultValue),field.key)
+// The manifest schema has every setting but the accounts list, which its
+// field types (boolean, enum, integer, string…) can't describe.
+assert.deepEqual(manifest.barWidget.schema.map(e=>e.key),P.fields.filter(f=>f.type!=='array').map(f=>f.key))
+for (const entry of manifest.barWidget.schema) {
+  const field=P.fields.find(f=>f.key===entry.key)
+  for (const key of ['type','maxLength','defaultValue']) assert.equal(entry[key],field[key],entry.key+'.'+key)
+}
 console.log('Teams model, configuration, matching, deduplication and argv tests passed')

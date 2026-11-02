@@ -56,6 +56,14 @@
         "type": "boolean",
         "label": "Put unread accounts first",
         "defaultValue": false
+      },
+      {
+        "key": "defaultAccount",
+        "type": "string",
+        "label": "Middle-click account",
+        "maxLength": 80,
+        "defaultValue": "",
+        "description": "An account ID; empty opens the most relevant account."
       }
     ]
   },
