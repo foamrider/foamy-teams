@@ -65,5 +65,9 @@
   "That value isn't allowed.": "Den verdien er ikke tillatt.",
   "This application ID is already assigned to an account.": "Denne applikasjons-ID-en tilhører allerede en konto.",
   "Undo": "Angre",
-  "Use at most 32 accounts.": "Bruk maksimalt 32 kontoer."
+  "Use at most 32 accounts.": "Bruk maksimalt 32 kontoer.",
+  "Dim": "Demp",
+  "Hide": "Skjul",
+  "When all accounts are closed": "Når alle kontoer er lukket",
+  "Show unread count in the bar": "Vis antall uleste i panelet"
 }

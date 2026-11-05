@@ -65,5 +65,9 @@
   "That value isn't allowed.": "That value isn't allowed.",
   "This application ID is already assigned to an account.": "This application ID is already assigned to an account.",
   "Undo": "Undo",
-  "Use at most 32 accounts.": "Use at most 32 accounts."
+  "Use at most 32 accounts.": "Use at most 32 accounts.",
+  "Dim": "Dim",
+  "Hide": "Hide",
+  "When all accounts are closed": "When all accounts are closed",
+  "Show unread count in the bar": "Show unread count in the bar"
 }

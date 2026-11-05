@@ -114,10 +114,12 @@ Panel {
 
   WidgetButton {
     id: button
+    objectName: "teamsButton"
     anchors.fill: parent
     bar: root.bar
     text: ""; labelVisible: false; hasVisualContent: true
     active: root.summary.totalUnread > 0
+    dimmed: root.summary.runningCount === 0
     activeColor: Commons.Color.accent
     fixedWidth: root.vertical ? -1 : Math.max(Style.bar.iconSlot, barContent.implicitWidth + Style.bar.iconSlot - Style.bar.iconCanvas)
     tooltipText: "Microsoft Teams · " + root.heading

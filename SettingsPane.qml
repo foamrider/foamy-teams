@@ -13,6 +13,7 @@ import "Model.js" as Model
 // replaces the list on the same page. Back (or Esc) leaves the editor first.
 FoamySettingsPage {
   id: root
+  objectName: "teamsSettings"
 
   required property var settings
   property var candidates: []
@@ -150,15 +151,21 @@ FoamySettingsPage {
     width: parent.width
     title: root.tr("Bar")
     enabled: !root.saving
-    Repeater {
-      model: [{ key: "showCount", label: "Show unread count in the bar" }, { key: "hideWhenClosed", label: "Hide when all accounts are closed" }]
-      FoamyToggle {
-        required property var modelData
-        width: parent.width
-        label: root.tr(modelData.label)
-        checked: root.pref(modelData.key)
-        onClicked: root.save(modelData.key, !checked)
-      }
+    FoamyToggle {
+      width: parent.width
+      label: root.tr("Show unread count in the bar")
+      checked: root.pref("showCount")
+      onClicked: root.save("showCount", !checked)
+    }
+    FoamyDropdown {
+      objectName: "closedMode"
+      width: parent.width
+      compact: true
+      label: root.tr("When all accounts are closed")
+      // Keep the existing boolean so saved Hide choices still apply.
+      value: root.pref("hideWhenClosed") ? "hide" : "mute"
+      options: [{ value: "mute", label: root.tr("Dim") }, { value: "hide", label: root.tr("Hide") }]
+      onChanged: function(value) { root.save("hideWhenClosed", value === "hide") }
     }
     FoamyDropdown {
       objectName: "defaultAccount"

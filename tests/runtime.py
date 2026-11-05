@@ -80,7 +80,8 @@ ShellRoot {
         if (!check(JSON.stringify(Plugin.TeamsService.trackedAppIds) === '["teams-work"]', "tracker follows configured ids: " + JSON.stringify(Plugin.TeamsService.trackedAppIds))) return
         if (!check(popup && popup.bodyItem === null, "body not built before first open " + popup + " " + one.data.concat(one.children).map(String).join(","))) return
         if (!check(Plugin.TeamsService.candidatesWanted === false, "no picker list while closed")) return
-        one.open()
+        if (!check(one.visible && shell.find(one, "teamsButton").dimmed, "closed accounts default to a clickable dim icon")) return
+        shell.find(one, "teamsButton").triggerPress(Qt.LeftButton)
         break
       case 1:
         if (!check(popup.bodyItem !== null, "body built on open")) return
@@ -126,7 +127,41 @@ ShellRoot {
         if (!check(picker.value === "teams-other", "picker shows the chosen window, got " + picker.value)) return
         popup.bodyItem.editAccount(shell.accounts[0])   // reopen the editor: draft resets
         if (!check(picker.value === "teams-work", "picker follows the draft after reopening, got " + picker.value)) return
+        shell.find(popup.bodyItem, "teamsSettings").leaveEditor()
+        var mode = shell.find(popup.bodyItem, "closedMode")
+        if (!check(mode && mode.visible && mode.compact && mode.value === "mute", "closed mode defaults to Dim")) return
+        mode.changed("hide")
+        if (!check(mode.value === "hide" && one.preference("hideWhenClosed"), "Hide saves the existing preference")) return
+        if (!check(one.visible, "open settings stay reachable in Hide mode")) return
         one.closeSettings(); one.close()
+        break
+      case 8:
+        if (!check(!one.visible, "Hide removes the closed widget")) return
+        // A running but unfocused window must restore the icon in either mode.
+        Plugin.TeamsService.windows = [{ appId: "teams-work", title: "(3) Chat | Microsoft Teams", activated: false, toplevel: null }]
+        break
+      case 9:
+        if (!check(one.visible && !shell.find(one, "teamsButton").dimmed && one.summary.totalUnread === 3, "unfocused running account restores the normal unread icon")) return
+        Plugin.TeamsService.windows = []
+        break
+      case 10:
+        if (!check(!one.visible && shell.find(one, "teamsButton").dimmed && one.summary.totalUnread === 0, "closing the last window clears unread and hides")) return
+        one.openSettings()
+        break
+      case 11:
+        if (!check(one.visible && one.editingSettings, "hidden widget remains reachable through settings")) return
+        var mode = shell.find(popup.bodyItem, "closedMode")
+        mode.changed("mute")
+        if (!check(mode.value === "mute" && !one.preference("hideWhenClosed"), "Dim selection stays bound to saved preference")) return
+        one.closeSettings(); one.close()
+        break
+      case 12:
+        if (!check(one.visible && shell.find(one, "teamsButton").dimmed, "Dim keeps closed widget visible")) return
+        // Invalid stored configuration must not hide the only repair path.
+        two.settings = { accounts: [null], hideWhenClosed: true }
+        if (!check(two.visible && two.configurationError !== "", "invalid configuration remains reachable")) return
+        two.settings = { accounts: [], hideWhenClosed: true }
+        if (!check(two.visible, "initial setup remains reachable")) return
         console.log("FOAMY DONE")
         Qt.quit()
       }

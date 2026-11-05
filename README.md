@@ -40,6 +40,13 @@ Rename, reorder, disable, or remove accounts in the cog menu. Configure the bar
 count, visibility when all accounts are closed, window context, closed-account
 rows, unread-first sorting, and the middle-click account.
 
+**When all accounts are closed** offers **Dim** (the default) or **Hide**, like
+Train's outside-schedule options. Dim keeps the icon clickable for launching
+Teams or opening settings. Any open window belonging to an enabled account
+restores the normal icon, even when that window is not focused. Hide keeps
+setup, invalid configuration, and an already open panel reachable.
+Existing `hideWhenClosed` settings are preserved (`false` = Dim, `true` = Hide).
+
 **Show window context** is off by default. When on, each running account shows
 the chat or person name from its window title, which anyone watching a shared
 screen can read while the panel is open.

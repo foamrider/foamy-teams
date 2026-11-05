@@ -37,6 +37,7 @@
         "key": "hideWhenClosed",
         "type": "boolean",
         "label": "Hide when all accounts are closed",
+        "description": "When off, dim the icon while no enabled account has an open window.",
         "defaultValue": false
       },
       {
