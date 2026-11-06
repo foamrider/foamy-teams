@@ -84,8 +84,10 @@ Panel {
     launchError = ""
     if (account.running && account.toplevel) { close(); account.toplevel.activate(); return }
     if (launchingId || launcher.running) return
+    var command = Model.launchCommand(Model.launchArguments(account.definition))
+    if (!command) { launchError = tr("Could not launch the account. Check its browser or launch arguments."); open(); return }
     launchingId = account.id
-    launcher.command = ["python3", decodeURIComponent(String(Qt.resolvedUrl("launch.py")).replace(/^file:\/\//, "")), JSON.stringify(Model.launchArguments(account.definition))]
+    launcher.command = command
     launcher.running = true
     launchTimeout.restart()
   }

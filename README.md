@@ -91,7 +91,7 @@ With Node.js and Python 3 installed, run:
 ```sh
 node tests/model.test.js
 node tests/i18n.test.cjs
-python3 -m unittest discover -s tests -p 'test_*.py'
+node tests/launch.test.js
 bash tests/kit-check.sh
 python3 tests/i18n-runtime.py
 python3 tests/runtime.py            # needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)

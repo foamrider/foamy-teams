@@ -67,4 +67,14 @@ function launchArguments(account) {
   if (account.profile) args.push("--profile-directory="+account.profile)
   return args
 }
-if (typeof module !== "undefined") module.exports={titleState:titleState,accountsForWindows:accountsForWindows,summary:summary,primaryAccount:primaryAccount,displayedAccounts:displayedAccounts,candidates:candidates,trackedAppIds:trackedAppIds,tracked:tracked,signature:signature,launchArguments:launchArguments}
+// The launch argv runs without a shell parsing it: sh only checks that the
+// executable resolves (exit 127 otherwise, so the panel can report it), and
+// setsid -f starts it in its own session with no inherited input or output, so
+// the client outlives the popup and the shell.
+var LAUNCH_SCRIPT = 'command -v -- "$1" >/dev/null 2>&1 || exit 127; exec setsid -f -- "$@" </dev/null >/dev/null 2>&1'
+function launchCommand(args) {
+  if (!Array.isArray(args) || !args.length || typeof args[0] !== "string" || !args[0].trim()) return null
+  for (var i = 0; i < args.length; i++) if (typeof args[i] !== "string" || args[i].indexOf("\0") !== -1) return null
+  return ["sh", "-c", LAUNCH_SCRIPT, "foamy-teams"].concat(args)
+}
+if (typeof module !== "undefined") module.exports={titleState:titleState,accountsForWindows:accountsForWindows,summary:summary,primaryAccount:primaryAccount,displayedAccounts:displayedAccounts,candidates:candidates,trackedAppIds:trackedAppIds,tracked:tracked,signature:signature,launchArguments:launchArguments,launchCommand:launchCommand}

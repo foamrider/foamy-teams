@@ -153,11 +153,13 @@ PanelKeyCatcher {
           id: row
           required property var modelData
           required property int index
-          readonly property bool hasUnread: modelData.unread > 0
-          readonly property string statusText: modelData.unread === null ? "" : modelData.unread > 0
-            ? FoamyI18n.tn("%1 unread", modelData.unread) : FoamyI18n.t("No unread")
-          readonly property string actionText: root.launchingId === modelData.id ? FoamyI18n.t("Launching…")
-            : FoamyI18n.t(modelData.running ? "Focus" : "Launch")
+          readonly property bool launching: root.launchingId === modelData.id
+          readonly property bool hasUnread: modelData.running && modelData.unread > 0
+          readonly property bool active: hasCursor
+          readonly property string statusText: !modelData.running || modelData.unread === null ? ""
+            : modelData.unread > 0 ? FoamyI18n.tn("%1 unread", modelData.unread) : FoamyI18n.t("No unread")
+          readonly property string actionText: launching ? FoamyI18n.t("Launching…")
+            : modelData.running ? FoamyI18n.t("Focus") : FoamyI18n.t("Launch")
           x: FoamyStyle.gapLarge
           width: content.width - FoamyStyle.gapLarge * 2
           height: root.showContext ? Style.space(60) : Style.space(46)
@@ -185,12 +187,40 @@ PanelKeyCatcher {
             ColumnLayout {
               Layout.fillWidth: true
               spacing: FoamyStyle.gapTiny
-              Label {
+              // The unread count sits with the name it belongs to; nothing when
+              // all is read (the header says so) or the count is unknown.
+              Row {
+                id: nameLine
                 Layout.fillWidth: true
-                text: row.modelData.name
-                elide: Text.ElideRight
-                wrapMode: Text.NoWrap
-                font.pixelSize: FoamyStyle.font.subtitle
+                spacing: FoamyStyle.gap
+                Label {
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Math.min(implicitWidth, nameLine.width - (badge.visible ? badge.width + nameLine.spacing : 0))
+                  text: row.modelData.name
+                  elide: Text.ElideRight
+                  wrapMode: Text.NoWrap
+                  font.pixelSize: FoamyStyle.font.subtitle
+                  // A closed account reads as available, not current.
+                  color: row.modelData.running ? FoamyPalette.text : FoamyPalette.secondaryText
+                }
+                Rectangle {
+                  id: badge
+                  visible: row.hasUnread
+                  anchors.verticalCenter: parent.verticalCenter
+                  height: count.implicitHeight + FoamyStyle.gapTiny * 2
+                  width: Math.max(height, count.implicitWidth + FoamyStyle.gap * 2)
+                  radius: FoamyStyle.pillRadius(height)
+                  color: Qt.alpha(Commons.Color.urgent, 0.18)
+                  Label {
+                    id: count
+                    anchors.centerIn: parent
+                    text: row.modelData.unread > 99 ? FoamyI18n.number(99, 0) + "+" : FoamyI18n.number(row.modelData.unread || 0, 0)
+                    wrapMode: Text.NoWrap
+                    color: Commons.Color.urgent
+                    font.pixelSize: FoamyStyle.font.caption
+                    font.weight: Font.DemiBold
+                  }
+                }
               }
               Label {
                 visible: root.showContext
@@ -202,39 +232,32 @@ PanelKeyCatcher {
                 wrapMode: Text.NoWrap
               }
             }
-            Rectangle {
-              visible: row.modelData.running && row.modelData.unread !== null
-              Layout.alignment: Qt.AlignVCenter
-              implicitWidth: status.implicitWidth
-              implicitHeight: status.implicitHeight
-              radius: FoamyStyle.pillRadius(height)
-              color: row.hasUnread ? Qt.alpha(Commons.Color.urgent, 0.16) : "transparent"
-              Label {
-                id: status
-                text: row.statusText
-                wrapMode: Text.NoWrap
-                color: row.hasUnread ? Commons.Color.urgent : FoamyPalette.secondaryText
-                font.pixelSize: FoamyStyle.font.bodySmall
-                font.weight: row.hasUnread ? Font.DemiBold : Font.Normal
-                leftPadding: row.hasUnread ? FoamyStyle.gap : 0
-                rightPadding: leftPadding
-                topPadding: row.hasUnread ? FoamyStyle.gapTiny : 0
-                bottomPadding: topPadding
-              }
-            }
+            // The whole row is the button; its verb shows under the cursor (and
+            // while launching), the icon says which one it is at rest.
             Label {
               Layout.alignment: Qt.AlignVCenter
               text: row.actionText
               wrapMode: Text.NoWrap
               color: FoamyPalette.secondaryText
               font.pixelSize: FoamyStyle.font.bodySmall
+              opacity: row.active || row.launching ? 1 : 0
+              Behavior on opacity { NumberAnimation { duration: FoamyMotion.hover } }
             }
             FoamyIcon {
+              id: actionIcon
               Layout.preferredWidth: FoamyStyle.iconSize - Style.space(3)
               Layout.preferredHeight: Layout.preferredWidth
               Layout.alignment: Qt.AlignVCenter
-              name: "external-link"
-              color: FoamyPalette.secondaryText
+              name: row.launching ? "refresh-cw" : row.modelData.running ? "app-window" : "play"
+              color: row.active ? FoamyPalette.text : FoamyPalette.secondaryText
+              RotationAnimation on rotation {
+                running: row.launching && row.visible && !FoamyMotion.reduceMotion
+                from: 0
+                to: 360
+                duration: FoamyMotion.spin
+                loops: Animation.Infinite
+                onStopped: actionIcon.rotation = 0
+              }
             }
           }
         }
