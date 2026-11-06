@@ -7,9 +7,9 @@ Microsoft Teams account switching and unread status.
 ## Install
 
 Requires Omarchy 4.5 (it also runs on 4.0.6) with Quickshell's Wayland
-toplevel support, Python 3, and a browser or client that opens Teams in
-separate account windows.
-No additional Python packages or Microsoft API credentials are required.
+toplevel support and a browser or client that opens Teams in separate account
+windows. No Microsoft API credentials are required. Python 3 is used only by the
+development tests.
 
 ```sh
 omarchy plugin add https://github.com/foamrider/foamy-teams.git --enable
