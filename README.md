@@ -2,14 +2,14 @@
 
 Microsoft Teams account switching and unread status.
 
-![Foamy Teams screenshot](preview.png)
+![Foamy Teams panel: three demo accounts, one with 3 unread messages and one closed](preview.png)
 
 ## Install
 
-Requires Omarchy 4.5 (it also runs on 4.0.6) with Quickshell's Wayland
-toplevel support, Python 3, and a browser or client that opens Teams in
-separate account windows.
-No additional Python packages or Microsoft API credentials are required.
+Requires Omarchy 4.5 with Quickshell's Wayland
+toplevel support and a browser or client that opens Teams in separate account
+windows. No Microsoft API credentials are required. Python 3 is used only by the
+development tests.
 
 ```sh
 omarchy plugin add https://github.com/foamrider/foamy-teams.git --enable
@@ -24,8 +24,12 @@ Remove the previous Teams widget from the bar when replacing it.
 3. Select the open Teams window, give the account a name, and set its browser profile.
 4. Select an account in the panel to focus its window or launch it.
 
-Unread counts appear in red badges. Markers in the theme's green identify running accounts;
-closed accounts show **Launch**. Right-click the widget to open settings.
+Unread counts appear in red badges beside the account name. Markers in the
+theme's green identify running accounts, which show a window icon (**Focus**);
+closed accounts have a dimmed name and a play icon (**Launch**). The verb shows
+on the row under the cursor. If the launcher can't be started, or no matching
+window appears within 15 seconds, the panel shows an error. Right-click the
+widget to open settings.
 Middle-click opens your selected default account, or the account with the most
 unread messages, preferring focused and running accounts when counts are equal.
 
@@ -33,6 +37,9 @@ In the panel, use the arrow keys or H/J/K/L to move the cursor, Enter or Space
 to open the selected account, S for settings, Tab or Shift+Tab to switch to the
 neighbouring bar panel, and Escape to close. In Settings, Tab moves between
 fields and Escape goes back.
+
+IPC (`omarchy-shell foamy.teams <fn>` on 4.5, `qs ipc call foamy.teams <fn>`):
+`open`, `close`, `toggle`, `settings`.
 
 ### Settings
 
@@ -94,9 +101,14 @@ node tests/i18n.test.cjs
 node tests/launch.test.js
 bash tests/kit-check.sh
 python3 tests/i18n-runtime.py
-python3 tests/runtime.py            # needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
+python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
 omarchy-plugin-validate "$PWD"
 ```
+
+The tests target Omarchy 4.5: the installed `/usr/share/omarchy` (set
+`OMARCHY_PATH` for another tree, or `FOAMY_HOST_45` for another shell in
+`runtime.py`). `runtime.py 4.0` and `runtime.py both` run 4.0 only against an
+Omarchy 4.0 shell tree in `FOAMY_HOST_40`, and print a SKIP line without one.
 
 Shared components (popup, header, settings page, icons, i18n) come from
 [foamy-kit](https://github.com/foamrider/foamy-kit) as stamped copies in `kit/`;
@@ -122,6 +134,6 @@ Licensed under [MIT](LICENSE), with [Omarchy](LICENSE-OMARCHY) and
 
 Provided **as is**, without warranty or guaranteed support. Use at your own risk.
 
-Language follows **Omarchy → Setup → Language** on Omarchy 4.5. Plugin language overrides are no longer used. Omarchy 4.0 displays the plugin in English. Missing translations fall back to English.
+Language follows **Omarchy → Setup → Language**. Plugin language overrides are no longer used. Missing translations fall back to English.
 
-Translation checks: `python3 tests/i18n-runtime.py` uses the installed shell. Set `OMARCHY_PATH` to a 4.5 source tree to check live language switching against that version.
+Translation checks: `python3 tests/i18n-runtime.py` checks live language switching on the installed shell. Set `OMARCHY_PATH` to check another Omarchy tree.
