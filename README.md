@@ -2,7 +2,7 @@
 
 Microsoft Teams account switching and unread status.
 
-![Foamy Teams screenshot](preview.png)
+![Foamy Teams panel: three demo accounts, one with 3 unread messages and one closed](preview.png)
 
 ## Install
 
@@ -24,8 +24,12 @@ Remove the previous Teams widget from the bar when replacing it.
 3. Select the open Teams window, give the account a name, and set its browser profile.
 4. Select an account in the panel to focus its window or launch it.
 
-Unread counts appear in red badges. Markers in the theme's green identify running accounts;
-closed accounts show **Launch**. Right-click the widget to open settings.
+Unread counts appear in red badges beside the account name. Markers in the
+theme's green identify running accounts, which show a window icon (**Focus**);
+closed accounts have a dimmed name and a play icon (**Launch**). The verb shows
+on the row under the cursor. If the launcher can't be started, or no matching
+window appears within 15 seconds, the panel shows an error. Right-click the
+widget to open settings.
 Middle-click opens your selected default account, or the account with the most
 unread messages, preferring focused and running accounts when counts are equal.
 
@@ -33,6 +37,9 @@ In the panel, use the arrow keys or H/J/K/L to move the cursor, Enter or Space
 to open the selected account, S for settings, Tab or Shift+Tab to switch to the
 neighbouring bar panel, and Escape to close. In Settings, Tab moves between
 fields and Escape goes back.
+
+IPC (`omarchy-shell foamy.teams <fn>` on 4.5, `qs ipc call foamy.teams <fn>`):
+`open`, `close`, `toggle`, `settings`.
 
 ### Settings
 
