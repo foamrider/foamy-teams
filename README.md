@@ -6,7 +6,7 @@ Microsoft Teams account switching and unread status.
 
 ## Install
 
-Requires Omarchy 4.5 (it also runs on 4.0.6) with Quickshell's Wayland
+Requires Omarchy 4.5 with Quickshell's Wayland
 toplevel support and a browser or client that opens Teams in separate account
 windows. No Microsoft API credentials are required. Python 3 is used only by the
 development tests.
@@ -101,9 +101,14 @@ node tests/i18n.test.cjs
 node tests/launch.test.js
 bash tests/kit-check.sh
 python3 tests/i18n-runtime.py
-python3 tests/runtime.py            # needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
+python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
 omarchy-plugin-validate "$PWD"
 ```
+
+The tests target Omarchy 4.5: the installed `/usr/share/omarchy` (set
+`OMARCHY_PATH` for another tree, or `FOAMY_HOST_45` for another shell in
+`runtime.py`). `runtime.py 4.0` and `runtime.py both` run 4.0 only against an
+Omarchy 4.0 shell tree in `FOAMY_HOST_40`, and print a SKIP line without one.
 
 Shared components (popup, header, settings page, icons, i18n) come from
 [foamy-kit](https://github.com/foamrider/foamy-kit) as stamped copies in `kit/`;
@@ -129,6 +134,6 @@ Licensed under [MIT](LICENSE), with [Omarchy](LICENSE-OMARCHY) and
 
 Provided **as is**, without warranty or guaranteed support. Use at your own risk.
 
-Language follows **Omarchy → Setup → Language** on Omarchy 4.5. Plugin language overrides are no longer used. Omarchy 4.0 displays the plugin in English. Missing translations fall back to English.
+Language follows **Omarchy → Setup → Language**. Plugin language overrides are no longer used. Missing translations fall back to English.
 
-Translation checks: `python3 tests/i18n-runtime.py` uses the installed shell. Set `OMARCHY_PATH` to a 4.5 source tree to check live language switching against that version.
+Translation checks: `python3 tests/i18n-runtime.py` checks live language switching on the installed shell. Set `OMARCHY_PATH` to check another Omarchy tree.
