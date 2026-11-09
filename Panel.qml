@@ -77,7 +77,12 @@ Panel {
     settings: root.shellSettings
     onSaved: function(key) { if (popup.bodyItem) popup.bodyItem.saved(key) }
   }
-  function savePreference(key, value) { return prefs.save(key, value) }
+  // A list or object that came through the view's `var` signal is a Qt
+  // sequence wrapper (Array.isArray is false, also for nested lists); save a
+  // plain copy.
+  function savePreference(key, value) {
+    return prefs.save(key, value !== null && typeof value === "object" ? JSON.parse(JSON.stringify(value)) : value)
+  }
 
   function openAccount(account) {
     if (!account) return
