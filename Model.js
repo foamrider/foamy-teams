@@ -6,7 +6,10 @@ function titleState(title) {
   var known = /Microsoft Teams/i.test(raw) && !/sign[ -]?in|log[ -]?in/i.test(raw)
   var unread = count && known ? Number(count[1]) : known ? 0 : null
   if (unread !== null && (!isFinite(unread) || unread > 9007199254740991)) unread = null
-  return { unread: unread, context: raw.replace(/^\([0-9]+\)\s*/, "").replace(/\s*\|\s*Microsoft Teams\s*$/i, "").trim() }
+  // raw is trimmed and the result is trimmed again, so the suffix pattern
+  // needs no \s* around it; a leading \s* backtracks quadratically on a long
+  // run of spaces in a page-controlled title.
+  return { unread: unread, context: raw.replace(/^\([0-9]+\)\s*/, "").replace(/\|\s*Microsoft Teams$/i, "").trim() }
 }
 function accountsForWindows(definitions, windows) {
   return definitions.filter(function(d) { return d.enabled }).map(function(d) {
