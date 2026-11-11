@@ -112,6 +112,8 @@ ShellRoot {
       case 3: case 4: case 5:
         break
       case 6:
+        // Each stub call sleeps 0.2 s; under load, wait for the queue (up to 18 s).
+        if (two.saving && shell.waits++ < 60) { shell.step--; return }
         var log = Quickshell.env("FOAMY_CLI_LOG")
         logView.path = log
         logView.reload()
@@ -168,12 +170,43 @@ ShellRoot {
         if (!check(two.visible && two.configurationError !== "", "invalid configuration remains reachable")) return
         two.settings = { accounts: [], hideWhenClosed: true }
         if (!check(two.visible, "initial setup remains reachable")) return
+        two.settings = { accounts: shell.accounts }
+        break
+      case 13:
+        // A running account is focused through its toplevel; nothing launches.
+        Plugin.TeamsService.windows = [{ appId: "teams-work", title: "Chat | Microsoft Teams", activated: false, toplevel: fakeWindow }]
+        one.open()
+        break
+      case 14:
+        one.openAccount(one.accounts[0])
+        if (!check(fakeWindow.activations === 1 && !one.opened && one.launchingId === "" && one.launchError === "", "focus activates the window and closes the popup: " + fakeWindow.activations + " " + one.opened + " " + one.launchingId)) return
+        Plugin.TeamsService.windows = []
+        // A launcher that cannot start the client reports it (exit 127), never success.
+        two.settings = { accounts: [Object.assign({}, shell.accounts[0], { command: ["foamy-teams-no-such-client"] })] }
+        two.openAccount(two.accounts[0])
+        if (!check(two.launchingId === "work", "launch starts, got " + two.launchingId)) return
+        shell.waits = 0
+        break
+      case 15:
+        // Up to 9 s: the exit-127 error, well before the 15 s no-window timeout.
+        if (two.launchingId !== "" && shell.waits++ < 30) { shell.step--; return }
+        if (!check(two.launchingId === "" && two.launchError === two.tr("Could not launch the account. Check its browser or launch arguments.") && two.opened, "failed launch shows its error: " + JSON.stringify([two.launchingId, two.launchError, two.opened]))) return
+        two.close()
         console.log("FOAMY DONE")
         Qt.quit()
       }
     }
   }
   property real width0: 0
+  property int waits: 0
+  QtObject {
+    id: fakeWindow
+    property string appId: "teams-work"
+    property string title: "(1) Chat | Microsoft Teams"
+    property bool activated: false
+    property int activations: 0
+    function activate() { activations++ }
+  }
   function find(item, name) {
     if (!item) return null
     if (item.objectName === name) return item
