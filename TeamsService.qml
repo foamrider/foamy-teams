@@ -51,8 +51,10 @@ QtObject {
   }
 
   // A tracked window's title or focus changed: publish after a short settle,
-  // and only if the visible result differs.
-  function scheduleUpdate() { settle.restart() }
+  // and only if the visible result differs. The window starts at the first
+  // change and is not extended by later ones, so a title that keeps changing
+  // still publishes every settleMs instead of never.
+  function scheduleUpdate() { if (!settle.running) settle.start() }
 
   function publishSettled() {
     var published = snapshot(matched)
