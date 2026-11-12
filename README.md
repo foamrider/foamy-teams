@@ -98,17 +98,19 @@ application IDs only while Settings is open). Title changes are coalesced for
 
 `kit/` holds shared components copied from [foamy-kit](https://github.com/foamrider/foamy-kit); edit them there, not here.
 
-With Node.js and Python 3 installed, run:
+Run every check (linters, formatters, kit checks and the tests in
+`tests/suite.sh`) with:
 
 ```sh
-node tests/model.test.js
-node tests/i18n.test.cjs
-node tests/launch.test.js
-bash tests/kit-check.sh
-python3 "$FOAMY_KIT/preview/i18n_runtime.py" .   # the kit's live catalog check
-python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
-omarchy-plugin-validate "$PWD"
+mise install                # once: the pinned tools
+tests/validate.sh           # everything; needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
+tests/validate.sh --ci      # node tests and host-free checks only
+tests/validate.sh --fast    # skips the offscreen Quickshell tests
 ```
+
+The suite runs `node tests/model.test.js`, `node tests/i18n.test.cjs`,
+`node tests/launch.test.js`, foamy-kit's `preview/i18n_runtime.py .` and
+`python3 tests/runtime.py` (offscreen, two bars).
 
 The tests target Omarchy 4.5: the installed `/usr/share/omarchy/shell`, or
 another shell tree in `FOAMY_HOST_45`.
