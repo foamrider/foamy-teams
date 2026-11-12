@@ -43,8 +43,13 @@ QtObject {
   }
 
   function snapshot(list) {
-    return list.map(function(w) {
-      return { appId: String(w.appId || ""), title: String(w.title || ""), activated: w.activated === true, toplevel: w }
+    return list.map(function (w) {
+      return {
+        appId: String(w.appId || ""),
+        title: String(w.title || ""),
+        activated: w.activated === true,
+        toplevel: w
+      }
     })
   }
 
@@ -52,38 +57,51 @@ QtObject {
   // configuration changed): publish now, identity included.
   function rematch() {
     var ids = root.trackedAppIds
-    var next = ids.length ? toplevelList().filter(function(w) { return Model.tracked(ids, w.appId) }) : []
+    var next = ids.length ? toplevelList().filter(function (w) {
+      return Model.tracked(ids, w.appId)
+    }) : []
     matched = next
     settle.stop()
     var published = snapshot(next)
     publishedSignature = Model.signature(published)
     windows = published
-    if (candidatesWanted) refreshCandidates()
+    if (candidatesWanted)
+      refreshCandidates()
   }
 
   // A tracked window's title or focus changed: publish after a short settle,
   // and only if the visible result differs. The window starts at the first
   // change and is not extended by later ones, so a title that keeps changing
   // still publishes every settleMs instead of never.
-  function scheduleUpdate() { if (!settle.running) settle.start() }
+  function scheduleUpdate() {
+    if (!settle.running)
+      settle.start()
+  }
 
   function publishSettled() {
     var published = snapshot(matched)
     var signature = Model.signature(published)
-    if (signature === publishedSignature) return
+    if (signature === publishedSignature)
+      return
     publishedSignature = signature
     windows = published
   }
 
   function refreshCandidates() {
-    candidates = candidatesWanted ? toplevelList().map(function(w) { return { appId: String(w.appId || ""), title: String(w.title || "") } }) : []
+    candidates = candidatesWanted ? toplevelList().map(function (w) {
+      return {
+        appId: String(w.appId || ""),
+        title: String(w.title || "")
+      }
+    }) : []
   }
 
   // Starts `command` for account `id` unless a launch is already running on
   // any bar. It ends when a window with `appId` appears, the launcher fails
   // (sh exits 127 when the client is missing) or after 15 s.
   function launch(id, appId, command, owner) {
-    if (launchingId !== "" || launcher.running) return false
+    if (launchingId !== "" || launcher.running)
+      return false
     launchingId = id
     launchingAppId = String(appId).toLowerCase()
     launchOwner = owner
@@ -104,7 +122,10 @@ QtObject {
     }
   }
 
-  onWindowsChanged: if (launchingAppId !== "" && windows.some(function(w) { return w.appId.toLowerCase() === root.launchingAppId })) endLaunch("")
+  onWindowsChanged: if (launchingAppId !== "" && windows.some(function (w) {
+    return w.appId.toLowerCase() === root.launchingAppId
+  }))
+    endLaunch("")
   onTrackedAppIdsChanged: rematch()
   onCandidatesWantedChanged: refreshCandidates()
   Component.onCompleted: rematch()
@@ -115,7 +136,10 @@ QtObject {
   }
 
   property Process launcher: Process {
-    onExited: function(code) { if (code !== 0) root.endLaunch("Could not launch the account. Check its browser or launch arguments.") }
+    onExited: function (code) {
+      if (code !== 0)
+        root.endLaunch("Could not launch the account. Check its browser or launch arguments.")
+    }
   }
 
   property Timer launchTimeout: Timer {
@@ -125,7 +149,9 @@ QtObject {
 
   property Connections listWatcher: Connections {
     target: ToplevelManager.toplevels
-    function onValuesChanged() { root.rematch() }
+    function onValuesChanged() {
+      root.rematch()
+    }
   }
 
   // Every window: only its application ID (rarely changes after mapping) and,
@@ -137,12 +163,16 @@ QtObject {
       required property var modelData
       property Connections identity: Connections {
         target: watcher.modelData
-        function onAppIdChanged() { root.rematch() }
+        function onAppIdChanged() {
+          root.rematch()
+        }
       }
       property Connections pickerTitle: Connections {
         target: watcher.modelData
         enabled: root.candidatesWanted
-        function onTitleChanged() { root.refreshCandidates() }
+        function onTitleChanged() {
+          root.refreshCandidates()
+        }
       }
     }
   }
@@ -153,8 +183,12 @@ QtObject {
     delegate: Connections {
       required property var modelData
       target: modelData
-      function onTitleChanged() { root.scheduleUpdate() }
-      function onActivatedChanged() { root.scheduleUpdate() }
+      function onTitleChanged() {
+        root.scheduleUpdate()
+      }
+      function onActivatedChanged() {
+        root.scheduleUpdate()
+      }
     }
   }
 }

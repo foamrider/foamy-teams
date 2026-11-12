@@ -13,7 +13,12 @@ PanelKeyCatcher {
   id: root
 
   property var accounts: []
-  property var summary: ({ totalUnread: 0, runningCount: 0, unknownCount: 0, accountCount: 0 })
+  property var summary: ({
+      totalUnread: 0,
+      runningCount: 0,
+      unknownCount: 0,
+      accountCount: 0
+    })
   property string heading: ""
   property bool configured: false
   property bool showContext: false
@@ -28,37 +33,55 @@ PanelKeyCatcher {
   property bool retryable: false
 
   signal activate(var account)
-  signal settingsRequested()
-  signal settingsBack()
-  signal closeRequestedByView()
+  signal settingsRequested
+  signal settingsBack
+  signal closeRequestedByView
   signal switchPanelRequested(int direction)
   signal saveRequested(string key, var value)
-  signal retryRequested()
+  signal retryRequested
 
   readonly property int settingsStop: accounts.length
-  readonly property string subtitle: summary.accountCount === 0
-    ? FoamyI18n.t(configured ? "Enable an account in Settings" : "Add your Teams accounts in Settings") : ""
+  readonly property string subtitle: summary.accountCount === 0 ? FoamyI18n.t(configured ? "Enable an account in Settings" : "Add your Teams accounts in Settings") : ""
 
   function panelOpened() {
     cursor.reset()
     list.contentY = 0
-    if (editingSettings) settingsPane.focusBack()
-    else root.forceActiveFocus()
+    if (editingSettings)
+      settingsPane.focusBack()
+    else
+      root.forceActiveFocus()
   }
-  function settingsOpened() { settingsPane.resetScroll(); settingsPane.focusBack() }
-  function settingsClosed() { list.contentY = 0; root.forceActiveFocus() }
-  function saved(key) { settingsPane.saved(key) }
-  function editAccount(account) { settingsPane.edit(account) }
+  function settingsOpened() {
+    settingsPane.resetScroll()
+    settingsPane.focusBack()
+  }
+  function settingsClosed() {
+    list.contentY = 0
+    root.forceActiveFocus()
+  }
+  function saved(key) {
+    settingsPane.saved(key)
+  }
+  function editAccount(account) {
+    settingsPane.edit(account)
+  }
   function activateCursor() {
-    if (cursor.index >= 0 && cursor.index < accounts.length) root.activate(accounts[cursor.index])
-    else if (cursor.index === settingsStop) root.settingsRequested()
+    if (cursor.index >= 0 && cursor.index < accounts.length)
+      root.activate(accounts[cursor.index])
+    else if (cursor.index === settingsStop)
+      root.settingsRequested()
   }
   // Keep the keyboard cursor's row in view.
   function reveal(index) {
     var row = accountRepeater.itemAt(index)
-    if (!row) { if (index === settingsStop) list.contentY = 0; return }
+    if (!row) {
+      if (index === settingsStop)
+        list.contentY = 0
+      return
+    }
     var y = row.mapToItem(list.contentItem, 0, 0).y
-    if (y < list.contentY) list.contentY = Math.max(0, y - FoamyStyle.gap)
+    if (y < list.contentY)
+      list.contentY = Math.max(0, y - FoamyStyle.gap)
     else if (y + row.height > list.contentY + list.height)
       list.contentY = Math.min(list.contentHeight - list.height, y + row.height - list.height + FoamyStyle.gap)
   }
@@ -67,13 +90,24 @@ PanelKeyCatcher {
   implicitHeight: editingSettings ? settingsPane.implicitHeight : content.implicitHeight
   blocked: editingSettings
 
-  FoamyCursor { id: cursor; count: root.accounts.length + 1 }
+  FoamyCursor {
+    id: cursor
+    count: root.accounts.length + 1
+  }
 
-  onMoveRequested: function(dx, dy) { cursor.move(dy !== 0 ? dy : dx); root.reveal(cursor.index) }
+  onMoveRequested: function (dx, dy) {
+    cursor.move(dy !== 0 ? dy : dx)
+    root.reveal(cursor.index)
+  }
   onActivateRequested: root.activateCursor()
   onCloseRequested: root.closeRequestedByView()
-  onTabRequested: function(direction) { root.switchPanelRequested(direction) }
-  onTextKey: function(text, modifiers) { if (cursor.plain(modifiers) && (text === "s" || text === "S")) root.settingsRequested() }
+  onTabRequested: function (direction) {
+    root.switchPanelRequested(direction)
+  }
+  onTextKey: function (text, modifiers) {
+    if (cursor.plain(modifiers) && (text === "s" || text === "S"))
+      root.settingsRequested()
+  }
 
   component Label: Text {
     textFormat: Text.PlainText
@@ -93,10 +127,14 @@ PanelKeyCatcher {
     clip: true
     boundsBehavior: Flickable.StopAtBounds
     flickableDirection: Flickable.VerticalFlick
-    Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
+    Controls.ScrollBar.vertical: Controls.ScrollBar {
+      policy: Controls.ScrollBar.AsNeeded
+    }
 
     // A wheel notch scrolls about three rows, however the mouse splits it.
-    FoamyWheelScroll { target: list }
+    FoamyWheelScroll {
+      target: list
+    }
 
     Column {
       id: content
@@ -111,10 +149,16 @@ PanelKeyCatcher {
         meta: root.heading
         settingsHasCursor: cursor.at(root.settingsStop)
         onSettingsClicked: root.settingsRequested()
-        onSettingsHovered: function(hovered) { if (hovered) cursor.hover(root.settingsStop) }
+        onSettingsHovered: function (hovered) {
+          if (hovered)
+            cursor.hover(root.settingsStop)
+        }
       }
 
-      Item { width: 1; height: FoamyStyle.gap }
+      Item {
+        width: 1
+        height: FoamyStyle.gap
+      }
 
       Column {
         x: FoamyStyle.padding
@@ -159,10 +203,8 @@ PanelKeyCatcher {
           readonly property bool blocked: root.launchingId !== "" && !launching && !modelData.running
           readonly property bool hasUnread: modelData.running && modelData.unread > 0
           readonly property bool active: hasCursor
-          readonly property string statusText: !modelData.running || modelData.unread === null ? ""
-            : modelData.unread > 0 ? FoamyI18n.tn("%1 unread", modelData.unread) : FoamyI18n.t("No unread")
-          readonly property string actionText: launching ? FoamyI18n.t("Launching…")
-            : modelData.running ? FoamyI18n.t("Focus") : FoamyI18n.t("Launch")
+          readonly property string statusText: !modelData.running || modelData.unread === null ? "" : modelData.unread > 0 ? FoamyI18n.tn("%1 unread", modelData.unread) : FoamyI18n.t("No unread")
+          readonly property string actionText: launching ? FoamyI18n.t("Launching…") : modelData.running ? FoamyI18n.t("Focus") : FoamyI18n.t("Launch")
           objectName: "account:" + modelData.id
           enabled: !blocked
           opacity: blocked ? FoamyStyle.disabledOpacity : 1
@@ -247,7 +289,11 @@ PanelKeyCatcher {
               color: FoamyPalette.secondaryText
               font.pixelSize: FoamyStyle.font.bodySmall
               opacity: row.active || row.launching ? 1 : 0
-              Behavior on opacity { NumberAnimation { duration: FoamyMotion.hover } }
+              Behavior on opacity {
+                NumberAnimation {
+                  duration: FoamyMotion.hover
+                }
+              }
             }
             FoamyIcon {
               id: actionIcon
@@ -282,7 +328,9 @@ PanelKeyCatcher {
     panelError: root.settingsError
     accountsLocked: root.accountsLocked
     retryable: root.retryable
-    onSave: function(key, value) { root.saveRequested(key, value) }
+    onSave: function (key, value) {
+      root.saveRequested(key, value)
+    }
     onBackToPanel: root.settingsBack()
     onRetry: root.retryRequested()
   }

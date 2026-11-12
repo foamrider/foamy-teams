@@ -28,49 +28,101 @@ FoamySettingsPage {
   readonly property var definitions: pref("accounts")
 
   signal save(string key, var value)
-  signal backToPanel()
+  signal backToPanel
 
   title: FoamyI18n.t(editing ? (adding ? "New account" : "Edit account") : "Settings")
   // Local validation first, then the panel's save error.
   property string panelError: ""
   error: localError || panelError
   onBack: {
-    if (editing) leaveEditor()
-    else root.backToPanel()
+    if (editing)
+      leaveEditor()
+    else
+      root.backToPanel()
   }
 
-  function tr(label) { return FoamyI18n.t(label) }
-  function pref(key) { return Prefs.value(Preferences.fields, root.settings, key) }
-  function leaveEditor() { editing = false; localError = ""; resetScroll(); focusBack() }
+  function tr(label) {
+    return FoamyI18n.t(label)
+  }
+  function pref(key) {
+    return Prefs.value(Preferences.fields, root.settings, key)
+  }
+  function leaveEditor() {
+    editing = false
+    localError = ""
+    resetScroll()
+    focusBack()
+  }
   function edit(account) {
-    if (accountsLocked) return
+    if (accountsLocked)
+      return
     adding = !account
     accountsBaseline = JSON.stringify(definitions)
-    draft = account ? JSON.parse(JSON.stringify(account)) : { id: "account-" + Date.now(), name: "", appId: "", enabled: true, browser: "omarchy-launch-webapp", profile: "", url: "https://teams.microsoft.com", command: [] }
+    draft = account ? JSON.parse(JSON.stringify(account)) : {
+      id: "account-" + Date.now(),
+      name: "",
+      appId: "",
+      enabled: true,
+      browser: "omarchy-launch-webapp",
+      profile: "",
+      url: "https://teams.microsoft.com",
+      command: []
+    }
     commandDraft = JSON.stringify(draft.command)
     localError = ""
     editing = true
     resetScroll()
-    Qt.callLater(function() { nameField.focusInput() })
+    Qt.callLater(function () {
+      nameField.focusInput()
+    })
   }
-  function change(key, value) { var next = Object.assign({}, draft); next[key] = value; draft = next }
+  function change(key, value) {
+    var next = Object.assign({}, draft)
+    next[key] = value
+    draft = next
+  }
   function saveAccount() {
-    if (accountsLocked) return
-    if (accountsBaseline !== JSON.stringify(definitions)) { localError = tr("Settings changed elsewhere. Reopen the account editor."); return }
+    if (accountsLocked)
+      return
+    if (accountsBaseline !== JSON.stringify(definitions)) {
+      localError = tr("Settings changed elsewhere. Reopen the account editor.")
+      return
+    }
     var updated = Object.assign({}, draft)
-    try { updated.command = JSON.parse(commandDraft) } catch (e) { localError = tr("Enter a JSON array of command arguments, or []."); return }
+    try {
+      updated.command = JSON.parse(commandDraft)
+    } catch (e) {
+      localError = tr("Enter a JSON array of command arguments, or [].")
+      return
+    }
     var next = definitions.slice()
-    if (adding) next.push(updated)
-    else next = next.map(function(a) { return a.id === updated.id ? updated : a })
+    if (adding)
+      next.push(updated)
+    else
+      next = next.map(function (a) {
+        return a.id === updated.id ? updated : a
+      })
     var message = Preferences.accountError(next)
-    if (message) { localError = tr(message); return }
+    if (message) {
+      localError = tr(message)
+      return
+    }
     localError = ""
     root.save("accounts", next)
   }
-  function saved(key) { if (key === "accounts" && editing) leaveEditor() }
-  function remove(id) { if (!accountsLocked) root.save("accounts", definitions.filter(function(a) { return a.id !== id })) }
+  function saved(key) {
+    if (key === "accounts" && editing)
+      leaveEditor()
+  }
+  function remove(id) {
+    if (!accountsLocked)
+      root.save("accounts", definitions.filter(function (a) {
+        return a.id !== id
+      }))
+  }
   function move(index, delta) {
-    if (accountsLocked) return
+    if (accountsLocked)
+      return
     var next = definitions.slice(), item = next.splice(index, 1)[0]
     next.splice(index + delta, 0, item)
     root.save("accounts", next)
@@ -127,12 +179,42 @@ FoamySettingsPage {
           ColumnLayout {
             Layout.fillWidth: true
             spacing: FoamyStyle.gapTiny
-            Label { Layout.fillWidth: true; text: accountRow.modelData.name; elide: Text.ElideRight; wrapMode: Text.NoWrap; font.pixelSize: FoamyStyle.font.subtitle }
-            Label { text: root.tr(accountRow.modelData.enabled ? "Enabled" : "Disabled"); color: FoamyPalette.secondaryText; font.pixelSize: FoamyStyle.font.caption }
+            Label {
+              Layout.fillWidth: true
+              text: accountRow.modelData.name
+              elide: Text.ElideRight
+              wrapMode: Text.NoWrap
+              font.pixelSize: FoamyStyle.font.subtitle
+            }
+            Label {
+              text: root.tr(accountRow.modelData.enabled ? "Enabled" : "Disabled")
+              color: FoamyPalette.secondaryText
+              font.pixelSize: FoamyStyle.font.caption
+            }
           }
-          FoamyAction { focusable: true; iconName: "chevron-up"; tooltipText: root.tr("Move up"); foreground: FoamyPalette.secondaryText; enabled: accountRow.index > 0; onClicked: root.move(accountRow.index, -1) }
-          FoamyAction { focusable: true; iconName: "chevron-down"; tooltipText: root.tr("Move down"); foreground: FoamyPalette.secondaryText; enabled: accountRow.index < root.definitions.length - 1; onClicked: root.move(accountRow.index, 1) }
-          FoamyAction { focusable: true; iconName: "pencil"; tooltipText: root.tr("Edit") + " · " + accountRow.modelData.name; foreground: FoamyPalette.secondaryText; onClicked: root.edit(accountRow.modelData) }
+          FoamyAction {
+            focusable: true
+            iconName: "chevron-up"
+            tooltipText: root.tr("Move up")
+            foreground: FoamyPalette.secondaryText
+            enabled: accountRow.index > 0
+            onClicked: root.move(accountRow.index, -1)
+          }
+          FoamyAction {
+            focusable: true
+            iconName: "chevron-down"
+            tooltipText: root.tr("Move down")
+            foreground: FoamyPalette.secondaryText
+            enabled: accountRow.index < root.definitions.length - 1
+            onClicked: root.move(accountRow.index, 1)
+          }
+          FoamyAction {
+            focusable: true
+            iconName: "pencil"
+            tooltipText: root.tr("Edit") + " · " + accountRow.modelData.name
+            foreground: FoamyPalette.secondaryText
+            onClicked: root.edit(accountRow.modelData)
+          }
         }
       }
     }
@@ -171,17 +253,44 @@ FoamySettingsPage {
       label: root.tr("When all accounts are closed")
       // Keep the existing boolean so saved Hide choices still apply.
       value: root.pref("hideWhenClosed") ? "hide" : "mute"
-      options: [{ value: "mute", label: root.tr("Dim") }, { value: "hide", label: root.tr("Hide") }]
-      onChanged: function(value) { root.save("hideWhenClosed", value === "hide") }
+      options: [
+        {
+          value: "mute",
+          label: root.tr("Dim")
+        },
+        {
+          value: "hide",
+          label: root.tr("Hide")
+        }
+      ]
+      onChanged: function (value) {
+        root.save("hideWhenClosed", value === "hide")
+      }
     }
     FoamyDropdown {
       objectName: "defaultAccount"
       width: parent.width
       compact: true
       label: root.tr("Middle-click account")
-      value: root.definitions.some(function(a) { return a.enabled && a.id === root.pref("defaultAccount") }) ? root.pref("defaultAccount") : ""
-      options: [{ value: "", label: root.tr("Most relevant account") }].concat(root.definitions.filter(function(a) { return a.enabled }).map(function(a) { return { value: a.id, label: a.name } }))
-      onChanged: function(value) { root.save("defaultAccount", value) }
+      value: root.definitions.some(function (a) {
+        return a.enabled && a.id === root.pref("defaultAccount")
+      }) ? root.pref("defaultAccount") : ""
+      options: [
+        {
+          value: "",
+          label: root.tr("Most relevant account")
+        }
+      ].concat(root.definitions.filter(function (a) {
+        return a.enabled
+      }).map(function (a) {
+        return {
+          value: a.id,
+          label: a.name
+        }
+      }))
+      onChanged: function (value) {
+        root.save("defaultAccount", value)
+      }
     }
   }
 
@@ -198,7 +307,16 @@ FoamySettingsPage {
       onClicked: root.save("showContext", !checked)
     }
     Repeater {
-      model: [{ key: "showClosed", label: "Show closed accounts" }, { key: "unreadFirst", label: "Put unread accounts first" }]
+      model: [
+        {
+          key: "showClosed",
+          label: "Show closed accounts"
+        },
+        {
+          key: "unreadFirst",
+          label: "Put unread accounts first"
+        }
+      ]
       FoamyToggle {
         required property var modelData
         width: parent.width
@@ -216,34 +334,97 @@ FoamySettingsPage {
     description: root.tr("Open Teams in a separate browser profile, then select its window here.")
     enabled: !root.saving
 
-    FieldLabel { text: root.tr("Name") }
-    SafeTextField { id: nameField; width: parent.width; text: root.draft.name || ""; translate: FoamyI18n.t; Accessible.name: root.tr("Name"); onTextEdited: root.change("name", text) }
+    FieldLabel {
+      text: root.tr("Name")
+    }
+    SafeTextField {
+      id: nameField
+      width: parent.width
+      text: root.draft.name || ""
+      translate: FoamyI18n.t
+      Accessible.name: root.tr("Name")
+      onTextEdited: root.change("name", text)
+    }
     FoamyDropdown {
       objectName: "appIdPicker"
       width: parent.width
       label: root.tr("Open Teams window")
       value: root.draft.appId || ""
-      options: [{ value: "", label: root.tr("Manual application ID") }].concat(Model.candidates(root.candidates))
-      onChanged: function(value) { root.change("appId", value) }
+      options: [
+        {
+          value: "",
+          label: root.tr("Manual application ID")
+        }
+      ].concat(Model.candidates(root.candidates))
+      onChanged: function (value) {
+        root.change("appId", value)
+      }
     }
-    FieldLabel { text: root.tr("Application ID") }
-    SafeTextField { width: parent.width; text: root.draft.appId || ""; translate: FoamyI18n.t; Accessible.name: root.tr("Application ID"); onTextEdited: root.change("appId", text) }
+    FieldLabel {
+      text: root.tr("Application ID")
+    }
+    SafeTextField {
+      width: parent.width
+      text: root.draft.appId || ""
+      translate: FoamyI18n.t
+      Accessible.name: root.tr("Application ID")
+      onTextEdited: root.change("appId", text)
+    }
     Label {
-      visible: !!root.draft.appId && !root.candidates.some(function(w) { return w.appId.toLowerCase() === String(root.draft.appId).toLowerCase() })
+      visible: !!root.draft.appId && !root.candidates.some(function (w) {
+        return w.appId.toLowerCase() === String(root.draft.appId).toLowerCase()
+      })
       width: parent.width
       text: root.tr("No matching window yet")
       color: FoamyPalette.mutedText
       font.pixelSize: FoamyStyle.font.bodySmall
     }
-    FoamyToggle { width: parent.width; label: root.tr("Enabled"); checked: root.draft.enabled === true; onClicked: root.change("enabled", !checked) }
-    FieldLabel { text: root.tr("Browser executable") }
-    SafeTextField { width: parent.width; text: root.draft.browser || ""; translate: FoamyI18n.t; Accessible.name: root.tr("Browser executable"); onTextEdited: root.change("browser", text) }
-    FieldLabel { text: root.tr("Browser profile") }
-    SafeTextField { width: parent.width; text: root.draft.profile || ""; translate: FoamyI18n.t; Accessible.name: root.tr("Browser profile"); onTextEdited: root.change("profile", text) }
-    FieldLabel { text: root.tr("Teams URL") }
-    SafeTextField { width: parent.width; text: root.draft.url || ""; translate: FoamyI18n.t; Accessible.name: root.tr("Teams URL"); onTextEdited: root.change("url", text) }
-    FieldLabel { text: root.tr("Advanced launch arguments (JSON array)") }
-    SafeTextField { width: parent.width; text: root.commandDraft; translate: FoamyI18n.t; Accessible.name: root.tr("Advanced launch arguments (JSON array)"); onTextEdited: root.commandDraft = text }
+    FoamyToggle {
+      width: parent.width
+      label: root.tr("Enabled")
+      checked: root.draft.enabled === true
+      onClicked: root.change("enabled", !checked)
+    }
+    FieldLabel {
+      text: root.tr("Browser executable")
+    }
+    SafeTextField {
+      width: parent.width
+      text: root.draft.browser || ""
+      translate: FoamyI18n.t
+      Accessible.name: root.tr("Browser executable")
+      onTextEdited: root.change("browser", text)
+    }
+    FieldLabel {
+      text: root.tr("Browser profile")
+    }
+    SafeTextField {
+      width: parent.width
+      text: root.draft.profile || ""
+      translate: FoamyI18n.t
+      Accessible.name: root.tr("Browser profile")
+      onTextEdited: root.change("profile", text)
+    }
+    FieldLabel {
+      text: root.tr("Teams URL")
+    }
+    SafeTextField {
+      width: parent.width
+      text: root.draft.url || ""
+      translate: FoamyI18n.t
+      Accessible.name: root.tr("Teams URL")
+      onTextEdited: root.change("url", text)
+    }
+    FieldLabel {
+      text: root.tr("Advanced launch arguments (JSON array)")
+    }
+    SafeTextField {
+      width: parent.width
+      text: root.commandDraft
+      translate: FoamyI18n.t
+      Accessible.name: root.tr("Advanced launch arguments (JSON array)")
+      onTextEdited: root.commandDraft = text
+    }
     Label {
       width: parent.width
       text: root.tr("Leave advanced arguments as [] to use the browser settings.")
@@ -253,10 +434,34 @@ FoamySettingsPage {
     RowLayout {
       width: parent.width
       spacing: FoamyStyle.gap
-      FoamyAction { visible: !root.adding; enabled: !root.accountsLocked; focusable: true; destructive: true; label: root.tr("Remove"); iconName: "trash"; foreground: FoamyPalette.secondaryText; onClicked: root.remove(root.draft.id) }
-      FoamyAction { focusable: true; label: root.tr("Cancel"); iconName: ""; foreground: FoamyPalette.secondaryText; onClicked: root.leaveEditor() }
-      Item { Layout.fillWidth: true }
-      FoamyAction { enabled: !root.accountsLocked; focusable: true; label: root.tr("Save"); iconName: "check"; foreground: Commons.Color.accent; onClicked: root.saveAccount() }
+      FoamyAction {
+        visible: !root.adding
+        enabled: !root.accountsLocked
+        focusable: true
+        destructive: true
+        label: root.tr("Remove")
+        iconName: "trash"
+        foreground: FoamyPalette.secondaryText
+        onClicked: root.remove(root.draft.id)
+      }
+      FoamyAction {
+        focusable: true
+        label: root.tr("Cancel")
+        iconName: ""
+        foreground: FoamyPalette.secondaryText
+        onClicked: root.leaveEditor()
+      }
+      Item {
+        Layout.fillWidth: true
+      }
+      FoamyAction {
+        enabled: !root.accountsLocked
+        focusable: true
+        label: root.tr("Save")
+        iconName: "check"
+        foreground: Commons.Color.accent
+        onClicked: root.saveAccount()
+      }
     }
   }
 }
