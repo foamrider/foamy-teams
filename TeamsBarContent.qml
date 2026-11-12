@@ -8,7 +8,8 @@ import "kit"
 Row {
   id: root
 
-  property int unread: 0
+  // real, not int: a summed total above 2^31 would wrap negative and hide.
+  property real unread: 0
   property bool showCount: true
   property string glyphFont: Style.font.family
   property color foreground: "white"
@@ -25,6 +26,7 @@ Row {
     color: root.foreground
   }
   Text {
+    objectName: "unreadCount"
     visible: root.showCount && root.unread > 0
     anchors.verticalCenter: parent.verticalCenter
     text: FoamyI18n.number(root.unread, 0)

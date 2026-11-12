@@ -261,6 +261,16 @@ ShellRoot {
     },
     function() {
       one.close()
+      // Unread totals above 2^31 must not wrap (the count would hide while
+      // the icon stays in the unread state).
+      Plugin.TeamsService.windows = [
+        { appId: "teams-work", title: "(2147483647) Chat | Microsoft Teams", activated: false, toplevel: null },
+        { appId: "teams-home", title: "(1) Chat | Microsoft Teams", activated: false, toplevel: null }
+      ]
+      var content = shell.find(one, "teamsBarContent")
+      expect(function() { return content.unread === 2147483648 && shell.find(one, "unreadCount").visible }, 5000, "the bar shows an unread total above 2^31", function() { return content.unread })
+    },
+    function() {
       Plugin.TeamsService.windows = []
       console.log("FOAMY DONE")
       Qt.quit()

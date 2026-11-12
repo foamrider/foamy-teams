@@ -125,6 +125,7 @@ Panel {
     }
     TeamsBarContent {
       id: barContent
+      objectName: "teamsBarContent"
       anchors.centerIn: parent
       unread: root.summary.totalUnread
       showCount: !root.vertical && root.preference("showCount")
