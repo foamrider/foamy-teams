@@ -1,5 +1,4 @@
 import QtQuick
-import qs.Commons
 import qs.Commons as Commons
 import "../kit"
 import ".." as Teams
@@ -9,7 +8,7 @@ Item {
   id: preview
   required property QtObject bar
   required property Item anchorItem
-  property var previewStates: ["accounts", "context", "empty", "settings", "editor", "bar"]
+  property var previewStates: ["accounts", "context", "empty", "launching", "settings", "invalid", "editor", "bar"]
   property string previewState: "accounts"
   readonly property Item popup: popup
 
@@ -23,7 +22,11 @@ Item {
     { id: "client", name: "Fabrikam (guest)", definition: definitions[1], running: true, active: false, unread: 0, context: "Ada Lovelace", toplevel: null },
     { id: "home", name: "Personal", definition: definitions[2], running: false, active: false, unread: null, context: "", toplevel: null }
   ]
+  // One account launching: the other closed account is unavailable meanwhile.
+  readonly property var launchingAccounts: [accounts[0], Object.assign({}, accounts[1], { running: false, active: false, unread: null, context: "" }), accounts[2]]
   readonly property bool empty: previewState === "empty"
+  // A hand-edited shell.json with one invalid account: the list reads empty and editing is blocked.
+  readonly property bool invalid: previewState === "invalid"
 
   onPreviewStateChanged: if (previewState === "editor" && popup.bodyItem) popup.bodyItem.editAccount(definitions[0])
 
@@ -41,13 +44,16 @@ Item {
           visible: preview.previewState !== "bar"
           width: parent.width
           height: parent.height
-          accounts: preview.empty ? [] : preview.accounts
+          accounts: preview.empty ? [] : preview.previewState === "launching" ? preview.launchingAccounts : preview.accounts
+          launchingId: preview.previewState === "launching" ? "home" : ""
           summary: preview.empty ? { totalUnread: 0, runningCount: 0, unknownCount: 0, accountCount: 0 } : { totalUnread: 3, runningCount: 2, unknownCount: 1, accountCount: 3 }
           heading: preview.empty ? FoamyI18n.t("No accounts configured") : FoamyI18n.tn("%1 unread messages", 3)
           configured: !preview.empty
           showContext: preview.previewState === "context"
-          editingSettings: preview.previewState === "settings" || preview.previewState === "editor"
-          settings: ({ accounts: preview.definitions, showCount: true, showContext: false })
+          editingSettings: preview.previewState === "settings" || preview.previewState === "editor" || preview.invalid
+          settings: ({ accounts: preview.invalid ? [] : preview.definitions, showCount: true, showContext: false })
+          accountsLocked: preview.invalid
+          settingsError: preview.invalid ? FoamyI18n.t("Enter an HTTPS Teams URL.") + " " + FoamyI18n.t("Fix or remove the invalid account in shell.json to edit the account list.") : ""
           candidates: [{ appId: "teams-contoso", title: "(3) Design sync | Product | Microsoft Teams" }, { appId: "teams-fabrikam", title: "Ada Lovelace | Microsoft Teams" }]
         }
         // Bar widget states: no unread, unread with count, count hidden.

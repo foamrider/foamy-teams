@@ -137,7 +137,7 @@ FoamySettingsPage {
       }
     }
     Label {
-      visible: root.definitions.length === 0
+      visible: root.definitions.length === 0 && !root.accountsLocked
       width: parent.width
       text: root.tr("Open Teams in a separate browser profile, then select its window here.")
       color: FoamyPalette.mutedText
