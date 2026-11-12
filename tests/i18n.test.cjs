@@ -15,10 +15,11 @@ for (const [key, value] of Object.entries(I.en)) {
   assert.ok(Object.hasOwn(I.no, key), `Norwegian translation for ${key}`);
   assert.deepEqual(tokens(I.no[key]), tokens(value), key);
 }
-// Every string the plugin asks for has a catalog entry.
+// Every string the plugin asks for has a catalog entry, including the
+// literal `label:` strings of toggle models that are translated later.
 const used = new Set();
 for (const file of fs.readdirSync(path.join(__dirname, '..')).filter(f => /\.(qml|js)$/.test(f)))
-  for (const m of fs.readFileSync(path.join(__dirname, '..', file), 'utf8').matchAll(/(?:\btr|FoamyI18n\.tn?)\(\s*"((?:[^"\\]|\\.)*)"/g)) used.add(JSON.parse(`"${m[1]}"`));
+  for (const m of fs.readFileSync(path.join(__dirname, '..', file), 'utf8').matchAll(/(?:(?:\btr|FoamyI18n\.tn?)\(\s*|\blabel:\s*)"((?:[^"\\]|\\.)*)"/g)) used.add(JSON.parse(`"${m[1]}"`));
 for (const key of used) assert.ok(Object.hasOwn(I.en, key), `catalog entry for ${key}`);
 assert.equal(manifest.barWidget?.defaults?.language, undefined);
 assert.equal((manifest.barWidget?.schema || []).some(f => f.key === 'language'), false);
