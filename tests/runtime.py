@@ -12,6 +12,7 @@ Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
 `omarchy` CLI is a stub that only logs its arguments.
 """
+
 import os
 import sys
 from pathlib import Path
@@ -23,7 +24,7 @@ os.environ.setdefault("FOAMY_HOST_45", "/usr/share/omarchy/shell")
 sys.path.insert(0, str(kit / "preview"))
 import harness  # noqa: E402
 
-SHELL = r'''import QtQuick
+SHELL = r"""import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -327,7 +328,7 @@ ShellRoot {
   }
   FileView { id: logView; blockLoading: true; printErrors: false }
 }
-'''
+"""
 
 
 def run():
