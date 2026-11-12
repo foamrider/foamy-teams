@@ -155,12 +155,17 @@ PanelKeyCatcher {
           required property var modelData
           required property int index
           readonly property bool launching: root.launchingId === modelData.id
+          // Another account is launching: this closed one can't start until it ends.
+          readonly property bool blocked: root.launchingId !== "" && !launching && !modelData.running
           readonly property bool hasUnread: modelData.running && modelData.unread > 0
           readonly property bool active: hasCursor
           readonly property string statusText: !modelData.running || modelData.unread === null ? ""
             : modelData.unread > 0 ? FoamyI18n.tn("%1 unread", modelData.unread) : FoamyI18n.t("No unread")
           readonly property string actionText: launching ? FoamyI18n.t("Launching…")
             : modelData.running ? FoamyI18n.t("Focus") : FoamyI18n.t("Launch")
+          objectName: "account:" + modelData.id
+          enabled: !blocked
+          opacity: blocked ? FoamyStyle.disabledOpacity : 1
           x: FoamyStyle.gapLarge
           width: content.width - FoamyStyle.gapLarge * 2
           height: root.showContext ? Style.space(60) : Style.space(46)

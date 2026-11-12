@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Io
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
@@ -26,8 +25,9 @@ Panel {
   // until shell.json is fixed, so a save can't wipe the other accounts.
   readonly property string accountsProblem: prefs.storedProblems.accounts || ""
   readonly property bool editingSettings: settingsState.editing
-  property string launchError: ""
-  property string launchingId: ""
+  // Launch state lives in TeamsService, once per shell (see openAccount).
+  readonly property string launchError: TeamsService.launchError ? tr(TeamsService.launchError) : ""
+  readonly property string launchingId: TeamsService.launchingId
   readonly property bool saving: prefs.busy
 
   function preference(key) { return prefs.value(key) }
@@ -52,11 +52,6 @@ Panel {
   Binding { target: TeamsService; property: "trackedAppIds"; value: root.trackedAppIds; when: member.isLeader }
   Binding { target: TeamsService; property: "candidatesWanted"; value: member.demanded; when: member.isLeader }
 
-  onAccountsChanged: {
-    if (launchingId && accounts.some(function(a) { return a.id === root.launchingId && a.running })) {
-      launchingId = ""; launchTimeout.stop()
-    }
-  }
   onOpenedChanged: if (opened) Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.panelOpened() })
 
   // Settings page state: lands on Settings even when the popup was closed,
@@ -87,30 +82,20 @@ Panel {
     return prefs.save(key, value !== null && typeof value === "object" ? JSON.parse(JSON.stringify(value)) : value)
   }
 
+  // While any bar's launch runs, other launches are refused; the popup
+  // shows the other closed accounts as unavailable meanwhile.
   function openAccount(account) {
     if (!account) return
-    launchError = ""
+    TeamsService.launchError = ""
     if (account.running && account.toplevel) { close(); account.toplevel.activate(); return }
-    if (launchingId || launcher.running) return
+    if (TeamsService.launchingId !== "") return
     var command = Model.launchCommand(Model.launchArguments(account.definition))
-    if (!command) { launchError = tr("Could not launch the account. Check its browser or launch arguments."); open(); return }
-    launchingId = account.id
-    launcher.command = command
-    launcher.running = true
-    launchTimeout.restart()
+    if (!command) { TeamsService.launchError = "Could not launch the account. Check its browser or launch arguments."; open(); return }
+    TeamsService.launch(account.id, account.definition.appId, command, root)
   }
-
-  Process {
-    id: launcher
-    onExited: function(code) {
-      if (code !== 0) { root.launchingId = ""; launchTimeout.stop(); root.launchError = root.tr("Could not launch the account. Check its browser or launch arguments."); root.open() }
-    }
-  }
-
-  Timer {
-    id: launchTimeout
-    interval: 15000
-    onTriggered: { root.launchingId = ""; root.launchError = root.tr("No matching window appeared. Check the account application ID or sign in to Teams."); root.open() }
+  Connections {
+    target: TeamsService
+    function onLaunchFailed(owner) { if (owner === root) root.open() }
   }
 
   FoamyIpc {

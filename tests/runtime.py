@@ -230,10 +230,48 @@ ShellRoot {
     },
     function() {
       one.closeSettings(); one.close()
+      // Launch state is once per shell: a launch from one bar shows on the
+      // other, and no bar starts a second client while it runs.
+      var work = Object.assign({}, shell.accounts[0], { command: ["foamy-teams-fake-client", "work"] })
+      var home = Object.assign({}, shell.accounts[0], { id: "home", name: "Home", appId: "teams-home", command: ["foamy-teams-fake-client", "home"] })
+      for (var p of [one, two]) p.settings = { accounts: [work, home] }
+      Plugin.TeamsService.windows = []
+      two.openAccount(two.accounts[0])
+      expect(function() { return shell.clientLog().length === 1 }, 9000, "the fake client starts", function() { return JSON.stringify(shell.clientLog()) })
+    },
+    function() {
+      if (!check(one.launchingId === "work" && two.launchingId === "work", "both bars show the launch: " + JSON.stringify([one.launchingId, two.launchingId]))) return
+      one.openAccount(one.accounts[0])
+      one.openAccount(one.accounts[1])
+      two.openAccount(two.accounts[1])
+      // (two saved showClosed false earlier, so its popup hides closed rows.)
+      one.open()
+      expect(function() { return one.popup.bodyItem !== null && shell.find(one.popup.bodyItem, "account:home") !== null }, 5000, "the other bar's popup lists the accounts")
+    },
+    function() {
+      var other = shell.find(one.popup.bodyItem, "account:home"), busy = shell.find(one.popup.bodyItem, "account:work")
+      if (!check(busy.launching && other.blocked === true && !other.enabled, "another closed account shows as unavailable while one launches: " + JSON.stringify([busy.launching, other.blocked, other.enabled]))) return
+      // A refused launch would have started its client well within this time.
+      wait.after(1000, function() {
+        if (!check(shell.clientLog().length === 1, "no second client while a launch runs: " + JSON.stringify(shell.clientLog()))) return
+        // The window appears: the launch ends on every bar.
+        Plugin.TeamsService.windows = [{ appId: "teams-work", title: "Chat | Microsoft Teams", activated: false, toplevel: null }]
+        expect(function() { return one.launchingId === "" && two.launchingId === "" && !other.blocked && one.launchError === "" }, 5000, "the launch ends when its window appears")
+      })
+    },
+    function() {
+      one.close()
+      Plugin.TeamsService.windows = []
       console.log("FOAMY DONE")
       Qt.quit()
     }
   ]
+  function clientLog() {
+    clientView.reload()
+    var text = clientView.text().trim()
+    return text ? text.split("\n") : []
+  }
+  FileView { id: clientView; path: Quickshell.env("FOAMY_CLIENT_LOG"); blockLoading: true; printErrors: false }
   property real width0: 0
   property int published: 0
   property int publishedDuringChurn: -1
@@ -280,6 +318,10 @@ def run():
     (stub / "omarchy").chmod(0o755)
     r.env["PATH"] = f"{stub}:{r.env['PATH']}"
     r.env["FOAMY_CLI_LOG"] = str(log)
+    # The launch tests' client: records its arguments, never a real Teams.
+    (stub / "foamy-teams-fake-client").write_text('#!/bin/sh\necho "$*" >> "$FOAMY_CLIENT_LOG"\n')
+    (stub / "foamy-teams-fake-client").chmod(0o755)
+    r.env["FOAMY_CLIENT_LOG"] = str(r.base / "client.log")
     r.run(timeout=60)
     # Nothing may reach a real omarchy-* host command (the harness stubs log them).
     host = r.host_commands()

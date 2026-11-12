@@ -28,7 +28,9 @@ Unread counts appear in red badges beside the account name. Markers in the
 theme's green identify running accounts, which show a window icon (**Focus**);
 closed accounts have a dimmed name and a play icon (**Launch**). The verb shows
 on the row under the cursor. If the launcher can't be started, or no matching
-window appears within 15 seconds, the panel shows an error. Right-click the
+window appears within 15 seconds, the panel shows an error. One account
+launches at a time on all monitors: while it starts, the other closed accounts
+are shown as unavailable. Right-click the
 widget to open settings.
 Middle-click opens your selected default account, or the account with the most
 unread messages, preferring focused and running accounts when counts are equal.
