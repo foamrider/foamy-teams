@@ -14,8 +14,6 @@ Panel {
   readonly property bool vertical: bar ? bar.vertical : false
   readonly property alias popup: popup
   readonly property alias prefs: prefs
-  // Normalize Qt-backed settings lists before validating them as JSON arrays.
-  readonly property var shellSettings: JSON.parse(JSON.stringify(root.settings || {}))
   // Saved values (including ones the shell has not reflected yet).
   readonly property var preferences: prefs.effectiveSettings
   readonly property var definitions: preference("accounts")
@@ -101,7 +99,8 @@ Panel {
     bar: root.bar
     moduleName: root.moduleName
     fields: Preferences.fields
-    settings: root.shellSettings
+    // The queue reads a plain JSON copy itself (FoamyPrefs.plain).
+    settings: root.settings
     onSaved: function (key) {
       if (popup.bodyItem)
         popup.bodyItem.saved(key)

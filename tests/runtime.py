@@ -42,11 +42,13 @@ ShellRoot {
   function check(condition, message) { if (!condition) fail(message); return condition }
 
   FloatingWindow {
+    id: window
     implicitWidth: 1920; implicitHeight: 1080
     ScreenSim { id: sim }
     Plugin.Panel { id: one; x: 1400; y: 4; width: 30; height: 26 }
     Plugin.Panel { id: two; x: 1440; y: 4; width: 30; height: 26 }
   }
+  Component { id: barPanel; Plugin.Panel { } }
 
   MockBar {
     id: bar
@@ -284,6 +286,17 @@ ShellRoot {
       var initial = shell.find(one.popup.bodyItem, "accountInitial").text
       if (!check(initial === "\u{1F600}", "the initial is the whole emoji: " + JSON.stringify(initial))) return
       one.closeSettings(); one.close()
+      // The bar hands settings over through createObject, where each list
+      // is a QML sequence wrapper (not an Array). The account list must
+      // still read as valid, and a save must carry it over.
+      shell.inline = true
+      shell.calls = []
+      var three = barPanel.createObject(window.contentItem, { x: 1480, y: 4, width: 30, height: 26, bar: bar, moduleName: "foamy.teams", settings: { accounts: shell.accounts, showCount: true } })
+      if (!check(!Array.isArray(three.settings.accounts), "createObject hands the account list over as a sequence wrapper")) return
+      if (!check(three.definitions.length === 1 && three.accountsProblem === "", "a wrapped account list reads as valid: " + JSON.stringify([three.definitions, three.accountsProblem]))) return
+      three.savePreference("showContext", true)
+      if (!check(shell.calls.length === 1 && shell.calls[0].settings.accounts.length === 1 && shell.calls[0].settings.accounts[0].id === "work", "a save carries the wrapped accounts over: " + JSON.stringify(shell.calls))) return
+      three.destroy()
       console.log("FOAMY DONE")
       Qt.quit()
     }
