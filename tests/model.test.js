@@ -72,3 +72,6 @@ for(let i=0;i<200;i++) M.titleState(spaced)
 assert.ok(Number(process.hrtime.bigint()-started)/1e6<500,'titleState is linear on long whitespace')
 for(const [title,context] of [['Chat   |   Microsoft Teams','Chat'],['(2)  A | B |Microsoft Teams  ','A | B'],['Chat |','Chat |'],['| Microsoft Teams',''],['Chat'+' '.repeat(10)+'| Microsoft Teams','Chat']]) assert.equal(M.titleState(title).context,context,title)
 console.log('Teams title parsing stays linear')
+// The avatar initial is one whole code point: an emoji's surrogate pair stays together.
+for(const [name,initial] of [['work','W'],['\u{1F600} Fun','\u{1F600}'],['école','É'],['',''],[null,'']]) assert.equal(M.initial(name),initial,JSON.stringify(name))
+console.log('Teams account initials keep whole code points')

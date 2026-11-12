@@ -64,6 +64,12 @@ function tracked(appIds, appId) { return (appIds || []).indexOf(text(appId).toLo
 function signature(windows) {
   return JSON.stringify((windows || []).map(function(w) { return [text(w.appId), text(w.title), w.activated === true] }))
 }
+// The avatar letter: the name's first code point, upper-cased, so a name that
+// starts with an emoji (a surrogate pair) never shows half of it.
+function initial(name) {
+  var first = text(name).codePointAt(0)
+  return first === undefined ? "" : String.fromCodePoint(first).toUpperCase()
+}
 function launchArguments(account) {
   if (account.command.length) return account.command.slice()
   var args=account.browser === "omarchy-launch-webapp" ? [account.browser,account.url] : [account.browser,"--app="+account.url]
@@ -80,4 +86,4 @@ function launchCommand(args) {
   for (var i = 0; i < args.length; i++) if (typeof args[i] !== "string" || args[i].indexOf("\0") !== -1) return null
   return ["sh", "-c", LAUNCH_SCRIPT, "foamy-teams"].concat(args)
 }
-if (typeof module !== "undefined") module.exports={titleState:titleState,accountsForWindows:accountsForWindows,summary:summary,primaryAccount:primaryAccount,displayedAccounts:displayedAccounts,candidates:candidates,trackedAppIds:trackedAppIds,tracked:tracked,signature:signature,launchArguments:launchArguments,launchCommand:launchCommand}
+if (typeof module !== "undefined") module.exports={titleState:titleState,accountsForWindows:accountsForWindows,summary:summary,primaryAccount:primaryAccount,displayedAccounts:displayedAccounts,candidates:candidates,trackedAppIds:trackedAppIds,tracked:tracked,signature:signature,initial:initial,launchArguments:launchArguments,launchCommand:launchCommand}

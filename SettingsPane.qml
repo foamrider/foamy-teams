@@ -117,8 +117,9 @@ FoamySettingsPage {
             radius: FoamyStyle.radius
             color: FoamyPalette.fieldFill
             Label {
+              objectName: "accountInitial"
               anchors.centerIn: parent
-              text: accountRow.modelData.name.slice(0, 1).toUpperCase()
+              text: Model.initial(accountRow.modelData.name)
               color: FoamyPalette.secondaryText
               font.pixelSize: FoamyStyle.font.subtitle
             }

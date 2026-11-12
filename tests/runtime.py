@@ -272,6 +272,17 @@ ShellRoot {
     },
     function() {
       Plugin.TeamsService.windows = []
+      // An account name that starts with an emoji (a surrogate pair) shows
+      // the whole character as its initial, never half of it.
+      one.settings = { accounts: [Object.assign({}, shell.accounts[0], { name: "\u{1F600} Fun" })] }
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "accountInitial") !== null }, 5000, "Settings lists the account")
+    },
+    function() {
+      var initial = shell.find(one.popup.bodyItem, "accountInitial").text
+      if (!check(initial === "\u{1F600}", "the initial is the whole emoji: " + JSON.stringify(initial))) return
+      one.closeSettings(); one.close()
       console.log("FOAMY DONE")
       Qt.quit()
     }
