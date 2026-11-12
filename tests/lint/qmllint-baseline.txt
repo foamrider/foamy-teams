@@ -1,0 +1,117 @@
+# qmllint findings accepted when the check was adopted. tests/validate.sh fails on any
+# finding not listed here. Regenerate with `tests/validate.sh --update-baseline qmllint`
+# only to drop fixed entries or after reviewing every added one; never to pass a check.
+Panel.qml: id-shadows-member: Id for object FoamyPopup shadows property "popup". Rename one or the other. | if (popup.bodyItem)
+Panel.qml: id-shadows-member: Id for object FoamyPrefsQueue shadows property "prefs". Rename one or the other. | readonly property var preferences: prefs.effectiveSettings
+Panel.qml: id-shadows-member: Note: Id defined here | id: popup
+Panel.qml: id-shadows-member: Note: Id defined here | id: prefs
+Panel.qml: missing-property: Member "iconCanvas" not found on type "QObject" | fixedWidth: root.vertical ? -1 : Math.max(Style.bar.iconSlot, barContent.implicitWidth + Style.bar.iconSlot - Style.bar.iconCanvas)
+Panel.qml: missing-property: Member "iconSlot" not found on type "QObject" | fixedWidth: root.vertical ? -1 : Math.max(Style.bar.iconSlot, barContent.implicitWidth + Style.bar.iconSlot - Style.bar.iconCanvas)
+Panel.qml: missing-property: Member "iconSlot" not found on type "QObject" | fixedWidth: root.vertical ? -1 : Math.max(Style.bar.iconSlot, barContent.implicitWidth + Style.bar.iconSlot - Style.bar.iconCanvas)
+Panel.qml: missing-property: Member "panelOpened" not found on type "QQuickItem" | popup.bodyItem.panelOpened()
+Panel.qml: missing-property: Member "saved" not found on type "QQuickItem" | popup.bodyItem.saved(key)
+Panel.qml: missing-property: Member "settingsClosed" not found on type "QQuickItem" | popup.bodyItem.settingsClosed()
+Panel.qml: missing-property: Member "settingsOpened" not found on type "QQuickItem" | popup.bodyItem.settingsOpened()
+Panel.qml: missing-property: Member "urgent" not found on type "QObject" | urgent: root.bar ? root.bar.urgent : Commons.Color.urgent
+Panel.qml: missing-property: Member "vertical" not found on type "QObject" | readonly property bool vertical: bar ? bar.vertical : false
+Panel.qml: unqualified: Unqualified access | accounts: root.displayed
+Panel.qml: unqualified: Unqualified access | accountsLocked: root.accountsProblem !== ""
+Panel.qml: unqualified: Unqualified access | configured: root.definitions.length > 0
+Panel.qml: unqualified: Unqualified access | editingSettings: root.editingSettings
+Panel.qml: unqualified: Unqualified access | error: root.launchError
+Panel.qml: unqualified: Unqualified access | heading: root.heading
+Panel.qml: unqualified: Unqualified access | launchingId: root.launchingId
+Panel.qml: unqualified: Unqualified access | onCloseRequestedByView: root.close()
+Panel.qml: unqualified: Unqualified access | onRetryRequested: prefs.retry()
+Panel.qml: unqualified: Unqualified access | onSettingsBack: root.closeSettings()
+Panel.qml: unqualified: Unqualified access | onSettingsRequested: root.openSettings()
+Panel.qml: unqualified: Unqualified access | retryable: prefs.canRetry
+Panel.qml: unqualified: Unqualified access | root.openAccount(account)
+Panel.qml: unqualified: Unqualified access | root.savePreference(key, value)
+Panel.qml: unqualified: Unqualified access | root.switchPanel(direction)
+Panel.qml: unqualified: Unqualified access | saving: root.saving
+Panel.qml: unqualified: Unqualified access | settings: root.preferences
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
+Panel.qml: unqualified: Unqualified access | showContext: root.preference("showContext")
+Panel.qml: unqualified: Unqualified access | summary: root.summary
+SettingsPane.qml: missing-property: Member "body" not found on type "QObject" | font.pixelSize: FoamyStyle.font.body
+SettingsPane.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+SettingsPane.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+SettingsPane.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+SettingsPane.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+SettingsPane.qml: missing-property: Member "caption" not found on type "QObject" | font.pixelSize: FoamyStyle.font.caption
+SettingsPane.qml: missing-property: Member "subtitle" not found on type "QObject" | font.pixelSize: FoamyStyle.font.subtitle
+SettingsPane.qml: missing-property: Member "subtitle" not found on type "QObject" | font.pixelSize: FoamyStyle.font.subtitle
+SettingsPane.qml: unqualified: Unqualified access | checked: root.pref(modelData.key)
+SettingsPane.qml: unqualified: Unqualified access | enabled: accountRow.index < root.definitions.length - 1
+SettingsPane.qml: unqualified: Unqualified access | label: root.tr(modelData.label)
+SettingsPane.qml: unqualified: Unqualified access | onClicked: root.edit(accountRow.modelData)
+SettingsPane.qml: unqualified: Unqualified access | onClicked: root.move(accountRow.index, -1)
+SettingsPane.qml: unqualified: Unqualified access | onClicked: root.move(accountRow.index, 1)
+SettingsPane.qml: unqualified: Unqualified access | onClicked: root.save(modelData.key, !checked)
+SettingsPane.qml: unqualified: Unqualified access | text: root.tr(accountRow.modelData.enabled ? "Enabled" : "Disabled")
+SettingsPane.qml: unqualified: Unqualified access | tooltipText: root.tr("Edit") + " · " + accountRow.modelData.name
+SettingsPane.qml: unqualified: Unqualified access | tooltipText: root.tr("Move down")
+SettingsPane.qml: unqualified: Unqualified access | tooltipText: root.tr("Move up")
+TeamsBarContent.qml: missing-property: Member "body" not found on type "QObject" | font.pixelSize: Style.font.body
+TeamsBarContent.qml: missing-property: Member "body" not found on type "QObject" | fontSize: Style.font.body
+TeamsBarContent.qml: missing-property: Member "family" not found on type "QObject" | property string glyphFont: Style.font.family
+TeamsBarContent.qml: missing-property: Member "iconCanvas" not found on type "QObject" | height: Style.bar.iconCanvas
+TeamsBarContent.qml: missing-property: Member "iconCanvas" not found on type "QObject" | width: Style.bar.iconCanvas
+TeamsService.qml: import: Type TeamsService not declared as singleton in qmldir but using pragma Singleton
+TeamsService.qml: unqualified: Unqualified access | enabled: root.candidatesWanted
+TeamsService.qml: unqualified: Unqualified access | root.refreshCandidates()
+TeamsService.qml: unqualified: Unqualified access | root.rematch()
+TeamsService.qml: unqualified: Unqualified access | root.scheduleUpdate()
+TeamsService.qml: unqualified: Unqualified access | root.scheduleUpdate()
+TeamsView.qml: missing-property: Member "body" not found on type "QObject" | font.pixelSize: FoamyStyle.font.body
+TeamsView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+TeamsView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+TeamsView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+TeamsView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+TeamsView.qml: missing-property: Member "caption" not found on type "QObject" | font.pixelSize: FoamyStyle.font.caption
+TeamsView.qml: missing-property: Member "caption" not found on type "QObject" | font.pixelSize: FoamyStyle.font.caption
+TeamsView.qml: missing-property: Member "subtitle" not found on type "QObject" | font.pixelSize: FoamyStyle.font.subtitle
+TeamsView.qml: unqualified: Unqualified access | Accessible.onPressAction: root.activate(modelData)
+TeamsView.qml: unqualified: Unqualified access | hasCursor: cursor.at(index)
+TeamsView.qml: unqualified: Unqualified access | height: root.showContext ? Style.space(60) : Style.space(46)
+TeamsView.qml: unqualified: Unqualified access | onClicked: root.activate(modelData)
+TeamsView.qml: unqualified: Unqualified access | onHovered: cursor.hover(index)
+TeamsView.qml: unqualified: Unqualified access | readonly property bool blocked: root.launchingId !== "" && !launching && !modelData.running
+TeamsView.qml: unqualified: Unqualified access | readonly property bool launching: root.launchingId === modelData.id
+TeamsView.qml: unqualified: Unqualified access | visible: root.showContext
+TeamsView.qml: unqualified: Unqualified access | width: content.width - FoamyStyle.gapLarge * 2
+preview/Preview.qml: id-shadows-member: Id for object FoamyPopup shadows property "popup". Rename one or the other. | readonly property Item popup: popup
+preview/Preview.qml: id-shadows-member: Note: Id defined here | id: popup
+preview/Preview.qml: incompatible-type: Cannot assign binding of type FoamyPopup to QQuickItem | readonly property Item popup: popup
+preview/Preview.qml: missing-property: Member "background" not found on type "QObject" | color: Commons.Color.bar.background
+preview/Preview.qml: missing-property: Member "editAccount" not found on type "QQuickItem" | popup.bodyItem.editAccount(definitions[0])
+preview/Preview.qml: missing-property: Member "text" not found on type "QObject" | foreground: Commons.Color.bar.text
+preview/Preview.qml: unqualified: Unqualified access | accounts: preview.empty ? [] : preview.previewState === "launching" ? preview.launchingAccounts : preview.accounts
+preview/Preview.qml: unqualified: Unqualified access | accounts: preview.empty ? [] : preview.previewState === "launching" ? preview.launchingAccounts : preview.accounts
+preview/Preview.qml: unqualified: Unqualified access | accounts: preview.empty ? [] : preview.previewState === "launching" ? preview.launchingAccounts : preview.accounts
+preview/Preview.qml: unqualified: Unqualified access | accounts: preview.empty ? [] : preview.previewState === "launching" ? preview.launchingAccounts : preview.accounts
+preview/Preview.qml: unqualified: Unqualified access | accounts: preview.invalid ? [] : preview.definitions,
+preview/Preview.qml: unqualified: Unqualified access | accounts: preview.invalid ? [] : preview.definitions,
+preview/Preview.qml: unqualified: Unqualified access | accountsLocked: preview.invalid
+preview/Preview.qml: unqualified: Unqualified access | configured: !preview.empty
+preview/Preview.qml: unqualified: Unqualified access | editingSettings: preview.previewState === "settings" || preview.previewState === "editor" || preview.invalid
+preview/Preview.qml: unqualified: Unqualified access | editingSettings: preview.previewState === "settings" || preview.previewState === "editor" || preview.invalid
+preview/Preview.qml: unqualified: Unqualified access | editingSettings: preview.previewState === "settings" || preview.previewState === "editor" || preview.invalid
+preview/Preview.qml: unqualified: Unqualified access | heading: preview.empty ? FoamyI18n.t("No accounts configured") : FoamyI18n.tn("%1 unread messages", 3)
+preview/Preview.qml: unqualified: Unqualified access | implicitHeight: preview.previewState === "bar" ? barStrip.height : view.implicitHeight
+preview/Preview.qml: unqualified: Unqualified access | launchingId: preview.previewState === "launching" ? "home" : ""
+preview/Preview.qml: unqualified: Unqualified access | settingsError: preview.invalid ? FoamyI18n.t("Enter an HTTPS Teams URL.") + " " + FoamyI18n.t("Fix or remove the invalid account in shell.json to edit the accou
+preview/Preview.qml: unqualified: Unqualified access | showContext: preview.previewState === "context"
+preview/Preview.qml: unqualified: Unqualified access | summary: preview.empty ? {
+preview/Preview.qml: unqualified: Unqualified access | visible: preview.previewState !== "bar"
+preview/Preview.qml: unqualified: Unqualified access | visible: preview.previewState === "bar"
