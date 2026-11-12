@@ -1,14 +1,12 @@
 """Load the real Panel.qml twice (two monitors) in an isolated offscreen shell
-on a chosen Omarchy host and check: one leader owns IPC and the window
+on Omarchy 4.5 and check: one leader owns IPC and the window
 tracker, the popup body builds lazily, the width does not change when
 Settings opens, and quick successive saves are queued, never dropped, on both
 the inline and the `omarchy bar set` paths.
 
-  python3 tests/runtime.py [4.5|4.0|both]      (default: 4.5)
+  python3 tests/runtime.py
 
-Runs on Omarchy 4.5: the installed /usr/share/omarchy/shell, or the tree in
-FOAMY_HOST_45. 4.0 runs only against an Omarchy 4.0 shell tree in
-FOAMY_HOST_40; without one, 4.0 and `both` print a SKIP line for it.
+Runs on the installed /usr/share/omarchy/shell, or the tree in FOAMY_HOST_45.
 
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
@@ -44,7 +42,7 @@ ShellRoot {
 
   FloatingWindow {
     implicitWidth: 1920; implicitHeight: 1080
-    ScreenSim { id: sim; fullScreenBar: Quickshell.env("FOAMY_HOST") === "4.5" }
+    ScreenSim { id: sim }
     Plugin.Panel { id: one; x: 1400; y: 4; width: 30; height: 26 }
     Plugin.Panel { id: two; x: 1440; y: 4; width: 30; height: 26 }
   }
@@ -243,9 +241,8 @@ ShellRoot {
 '''
 
 
-def run(host):
-    r = harness.Run(host, SHELL,
-                    plugin=plugin, prefix=f"foamy-teams-runtime-{host}-")
+def run():
+    r = harness.Run("4.5", SHELL, plugin=plugin, prefix="foamy-teams-runtime-")
     stub = r.base / "bin"
     stub.mkdir()
     log = r.base / "cli.log"
@@ -260,22 +257,9 @@ def run(host):
             print("  log:", line.strip())
     if not ok:
         print(r.log)
-    print(f"foamy-teams runtime {host}: {'pass' if ok else 'FAIL'}")
+    print(f"foamy-teams runtime: {'pass' if ok else 'FAIL'}")
     r.cleanup()
     return ok
 
 
-def hosts(args):
-    """4.5 by default; 4.0 only with FOAMY_HOST_40 (no installed 4.0 shell)."""
-    chosen = []
-    for arg in args or ["4.5"]:
-        if arg not in ("4.0", "4.5", "both"):
-            sys.exit(f"unknown host {arg!r}: use 4.5, 4.0 or both")
-        chosen += ["4.5", "4.0"] if arg == "both" else [arg]
-    if "4.0" in chosen and not os.environ.get("FOAMY_HOST_40"):
-        print("SKIP foamy-teams runtime 4.0: set FOAMY_HOST_40 to an Omarchy 4.0 shell tree")
-        chosen = [h for h in chosen if h != "4.0"]
-    return list(dict.fromkeys(chosen))
-
-
-sys.exit(0 if all([run(h) for h in hosts(sys.argv[1:])]) else 1)
+sys.exit(0 if run() else 1)

@@ -105,10 +105,8 @@ python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_K
 omarchy-plugin-validate "$PWD"
 ```
 
-The tests target Omarchy 4.5: the installed `/usr/share/omarchy` (set
-`OMARCHY_PATH` for another tree, or `FOAMY_HOST_45` for another shell in
-`runtime.py`). `runtime.py 4.0` and `runtime.py both` run 4.0 only against an
-Omarchy 4.0 shell tree in `FOAMY_HOST_40`, and print a SKIP line without one.
+The tests target Omarchy 4.5: the installed `/usr/share/omarchy/shell`, or
+another shell tree in `FOAMY_HOST_45`.
 
 Shared components (popup, header, settings page, icons, i18n) come from
 [foamy-kit](https://github.com/foamrider/foamy-kit) as stamped copies in `kit/`;
