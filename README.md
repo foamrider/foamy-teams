@@ -100,7 +100,7 @@ node tests/model.test.js
 node tests/i18n.test.cjs
 node tests/launch.test.js
 bash tests/kit-check.sh
-python3 tests/i18n-runtime.py
+python3 "$FOAMY_KIT/preview/i18n_runtime.py" .   # the kit's live catalog check
 python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
 omarchy-plugin-validate "$PWD"
 ```
@@ -136,4 +136,4 @@ Provided **as is**, without warranty or guaranteed support. Use at your own risk
 
 Language follows **Omarchy → Setup → Language**. Plugin language overrides are no longer used. Missing translations fall back to English.
 
-Translation checks: `python3 tests/i18n-runtime.py` checks live language switching on the installed shell. Set `OMARCHY_PATH` to check another Omarchy tree.
+Translation checks: foamy-kit's `preview/i18n_runtime.py .` checks live language switching on the installed shell. Set `FOAMY_HOST_45` to check another Omarchy shell tree.

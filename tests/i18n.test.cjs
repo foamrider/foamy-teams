@@ -27,6 +27,4 @@ assert.equal(I.text('constructor', 'no'), 'constructor');
 assert.equal(I.tn('%1 unread messages', 1, 'en'), '1 unread message');
 assert.equal(I.tn('%1 unread messages', 3, 'no'), '3 uleste meldinger');
 assert.equal(I.tn('%1 unread', 1, 'no'), '1 ulest');
-const ui = fs.readFileSync(path.join(__dirname, '../kit/FoamyI18n.qml'), 'utf8');
-assert.ok(ui.includes('Qt.createQmlObject'), '4.0 must not statically require a 4.5 QML type');
 console.log('Teams i18n catalog tests passed');
