@@ -90,11 +90,7 @@ TeamsView.qml: unqualified: Unqualified access | readonly property bool blocked:
 TeamsView.qml: unqualified: Unqualified access | readonly property bool launching: root.launchingId === modelData.id
 TeamsView.qml: unqualified: Unqualified access | visible: root.showContext
 TeamsView.qml: unqualified: Unqualified access | width: content.width - FoamyStyle.gapLarge * 2
-preview/Preview.qml: id-shadows-member: Id for object FoamyPopup shadows property "popup". Rename one or the other. | readonly property Item popup: popup
-preview/Preview.qml: id-shadows-member: Note: Id defined here | id: popup
-preview/Preview.qml: incompatible-type: Cannot assign binding of type FoamyPopup to QQuickItem | readonly property Item popup: popup
 preview/Preview.qml: missing-property: Member "background" not found on type "QObject" | color: Commons.Color.bar.background
-preview/Preview.qml: missing-property: Member "editAccount" not found on type "QQuickItem" | popup.bodyItem.editAccount(definitions[0])
 preview/Preview.qml: missing-property: Member "text" not found on type "QObject" | foreground: Commons.Color.bar.text
 preview/Preview.qml: unqualified: Unqualified access | accounts: preview.empty ? [] : preview.previewState === "launching" ? preview.launchingAccounts : preview.accounts
 preview/Preview.qml: unqualified: Unqualified access | accounts: preview.empty ? [] : preview.previewState === "launching" ? preview.launchingAccounts : preview.accounts

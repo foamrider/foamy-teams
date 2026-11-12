@@ -10,7 +10,7 @@ Item {
   required property Item anchorItem
   property var previewStates: ["accounts", "context", "empty", "launching", "settings", "invalid", "editor", "bar"]
   property string previewState: "accounts"
-  readonly property Item popup: popup
+  readonly property var popup: previewPopup
 
   readonly property var definitions: [
     {
@@ -91,7 +91,7 @@ Item {
     popup.bodyItem.editAccount(definitions[0])
 
   FoamyPopup {
-    id: popup
+    id: previewPopup
     anchorItem: preview.anchorItem
     bar: preview.bar
     open: true
