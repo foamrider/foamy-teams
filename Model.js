@@ -6,7 +6,10 @@ function titleState(title) {
   var known = /Microsoft Teams/i.test(raw) && !/sign[ -]?in|log[ -]?in/i.test(raw)
   var unread = count && known ? Number(count[1]) : known ? 0 : null
   if (unread !== null && (!isFinite(unread) || unread > 9007199254740991)) unread = null
-  return { unread: unread, context: raw.replace(/^\([0-9]+\)\s*/, "").replace(/\s*\|\s*Microsoft Teams\s*$/i, "").trim() }
+  // raw is trimmed and the result is trimmed again, so the suffix pattern
+  // needs no \s* around it; a leading \s* backtracks quadratically on a long
+  // run of spaces in a page-controlled title.
+  return { unread: unread, context: raw.replace(/^\([0-9]+\)\s*/, "").replace(/\|\s*Microsoft Teams$/i, "").trim() }
 }
 function accountsForWindows(definitions, windows) {
   return definitions.filter(function(d) { return d.enabled }).map(function(d) {
@@ -61,6 +64,12 @@ function tracked(appIds, appId) { return (appIds || []).indexOf(text(appId).toLo
 function signature(windows) {
   return JSON.stringify((windows || []).map(function(w) { return [text(w.appId), text(w.title), w.activated === true] }))
 }
+// The avatar letter: the name's first code point, upper-cased, so a name that
+// starts with an emoji (a surrogate pair) never shows half of it.
+function initial(name) {
+  var first = text(name).codePointAt(0)
+  return first === undefined ? "" : String.fromCodePoint(first).toUpperCase()
+}
 function launchArguments(account) {
   if (account.command.length) return account.command.slice()
   var args=account.browser === "omarchy-launch-webapp" ? [account.browser,account.url] : [account.browser,"--app="+account.url]
@@ -77,4 +86,4 @@ function launchCommand(args) {
   for (var i = 0; i < args.length; i++) if (typeof args[i] !== "string" || args[i].indexOf("\0") !== -1) return null
   return ["sh", "-c", LAUNCH_SCRIPT, "foamy-teams"].concat(args)
 }
-if (typeof module !== "undefined") module.exports={titleState:titleState,accountsForWindows:accountsForWindows,summary:summary,primaryAccount:primaryAccount,displayedAccounts:displayedAccounts,candidates:candidates,trackedAppIds:trackedAppIds,tracked:tracked,signature:signature,launchArguments:launchArguments,launchCommand:launchCommand}
+if (typeof module !== "undefined") module.exports={titleState:titleState,accountsForWindows:accountsForWindows,summary:summary,primaryAccount:primaryAccount,displayedAccounts:displayedAccounts,candidates:candidates,trackedAppIds:trackedAppIds,tracked:tracked,signature:signature,initial:initial,launchArguments:launchArguments,launchCommand:launchCommand}

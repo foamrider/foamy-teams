@@ -28,7 +28,9 @@ Unread counts appear in red badges beside the account name. Markers in the
 theme's green identify running accounts, which show a window icon (**Focus**);
 closed accounts have a dimmed name and a play icon (**Launch**). The verb shows
 on the row under the cursor. If the launcher can't be started, or no matching
-window appears within 15 seconds, the panel shows an error. Right-click the
+window appears within 15 seconds, the panel shows an error. One account
+launches at a time on all monitors: while it starts, the other closed accounts
+are shown as unavailable. Right-click the
 widget to open settings.
 Middle-click opens your selected default account, or the account with the most
 unread messages, preferring focused and running accounts when counts are equal.
@@ -59,6 +61,9 @@ the chat or person name from its window title, which anyone watching a shared
 screen can read while the panel is open.
 Settings are saved on the `foamy.teams` widget entry in Omarchy's `shell.json`.
 No accounts or machine-specific profiles are included in the plugin defaults.
+If a hand edit of `shell.json` leaves an account invalid, Settings names the
+problem and blocks account changes until the file is fixed, so a save can't
+replace the other stored accounts. The other settings still save.
 
 The window picker copies the application's ID. It cannot discover Microsoft
 account identities or infer which browser profile launches a window. Each
@@ -93,22 +98,22 @@ application IDs only while Settings is open). Title changes are coalesced for
 
 `kit/` holds shared components copied from [foamy-kit](https://github.com/foamrider/foamy-kit); edit them there, not here.
 
-With Node.js and Python 3 installed, run:
+Run every check (linters, formatters, kit checks and the tests in
+`tests/suite.sh`) with:
 
 ```sh
-node tests/model.test.js
-node tests/i18n.test.cjs
-node tests/launch.test.js
-bash tests/kit-check.sh
-python3 tests/i18n-runtime.py
-python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
-omarchy-plugin-validate "$PWD"
+mise install                # once: the pinned tools
+tests/validate.sh           # everything; needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
+tests/validate.sh --ci      # node tests and host-free checks only
+tests/validate.sh --fast    # skips the offscreen Quickshell tests
 ```
 
-The tests target Omarchy 4.5: the installed `/usr/share/omarchy` (set
-`OMARCHY_PATH` for another tree, or `FOAMY_HOST_45` for another shell in
-`runtime.py`). `runtime.py 4.0` and `runtime.py both` run 4.0 only against an
-Omarchy 4.0 shell tree in `FOAMY_HOST_40`, and print a SKIP line without one.
+The suite runs `node tests/model.test.js`, `node tests/i18n.test.cjs`,
+`node tests/launch.test.js`, foamy-kit's `preview/i18n_runtime.py .` and
+`python3 tests/runtime.py` (offscreen, two bars).
+
+The tests target Omarchy 4.5: the installed `/usr/share/omarchy/shell`, or
+another shell tree in `FOAMY_HOST_45`.
 
 Shared components (popup, header, settings page, icons, i18n) come from
 [foamy-kit](https://github.com/foamrider/foamy-kit) as stamped copies in `kit/`;
@@ -136,4 +141,4 @@ Provided **as is**, without warranty or guaranteed support. Use at your own risk
 
 Language follows **Omarchy → Setup → Language**. Plugin language overrides are no longer used. Missing translations fall back to English.
 
-Translation checks: `python3 tests/i18n-runtime.py` checks live language switching on the installed shell. Set `OMARCHY_PATH` to check another Omarchy tree.
+Translation checks: foamy-kit's `preview/i18n_runtime.py .` checks live language switching on the installed shell. Set `FOAMY_HOST_45` to check another Omarchy shell tree.

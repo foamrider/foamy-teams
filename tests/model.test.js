@@ -63,3 +63,15 @@ for (const entry of manifest.barWidget.schema) {
   for (const key of ['type','maxLength','defaultValue']) assert.equal(entry[key],field[key],entry.key+'.'+key)
 }
 console.log('Teams model, configuration, matching, deduplication and argv tests passed')
+// Titles reach titleState unbounded except by the Wayland message size (4 KiB).
+// Stripping the "| Microsoft Teams" suffix must stay linear on long runs of
+// spaces: a quadratic pattern took about 5 ms a call here.
+const spaced='Chat'+' '.repeat(4000)+'x'
+let started=process.hrtime.bigint()
+for(let i=0;i<200;i++) M.titleState(spaced)
+assert.ok(Number(process.hrtime.bigint()-started)/1e6<500,'titleState is linear on long whitespace')
+for(const [title,context] of [['Chat   |   Microsoft Teams','Chat'],['(2)  A | B |Microsoft Teams  ','A | B'],['Chat |','Chat |'],['| Microsoft Teams',''],['Chat'+' '.repeat(10)+'| Microsoft Teams','Chat']]) assert.equal(M.titleState(title).context,context,title)
+console.log('Teams title parsing stays linear')
+// The avatar initial is one whole code point: an emoji's surrogate pair stays together.
+for(const [name,initial] of [['work','W'],['\u{1F600} Fun','\u{1F600}'],['école','É'],['',''],[null,'']]) assert.equal(M.initial(name),initial,JSON.stringify(name))
+console.log('Teams account initials keep whole code points')

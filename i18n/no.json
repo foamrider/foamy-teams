@@ -71,5 +71,9 @@
   "Dim": "Demp",
   "Hide": "Skjul",
   "When all accounts are closed": "Når alle kontoer er lukket",
-  "Show unread count in the bar": "Vis antall uleste i panelet"
+  "Show unread count in the bar": "Vis antall uleste i panelet",
+  "Fix or remove the invalid account in shell.json to edit the account list.": "Rett eller fjern den ugyldige kontoen i shell.json for å endre kontolisten.",
+  "The saved list in shell.json isn't valid, so it wasn't replaced.": "Den lagrede listen i shell.json er ugyldig, så den ble ikke erstattet.",
+  "Show closed accounts": "Vis lukkede kontoer",
+  "Put unread accounts first": "Vis kontoer med uleste først"
 }
