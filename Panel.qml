@@ -21,6 +21,10 @@ Panel {
   readonly property var preferences: prefs.effectiveSettings
   readonly property var definitions: preference("accounts")
   readonly property string configurationError: Preferences.configurationError(preferences)
+  // The stored account list fails the schema, so it reads as empty; it is
+  // kept (FoamyPrefs never replaces it unforced) and editing stays blocked
+  // until shell.json is fixed, so a save can't wipe the other accounts.
+  readonly property string accountsProblem: prefs.storedProblems.accounts || ""
   readonly property bool editingSettings: settingsState.editing
   property string launchError: ""
   property string launchingId: ""
@@ -164,7 +168,10 @@ Panel {
         settings: root.preferences
         candidates: TeamsService.candidates
         saving: root.saving
-        settingsError: prefs.error ? root.tr(prefs.error) : (root.configurationError ? root.tr(root.configurationError) : "")
+        settingsError: prefs.error ? root.tr(prefs.error)
+          : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in shell.json to edit the account list.")
+          : root.configurationError ? root.tr(root.configurationError) : ""
+        accountsLocked: root.accountsProblem !== ""
         retryable: prefs.canRetry
         onActivate: function(account) { root.openAccount(account) }
         onSettingsRequested: root.openSettings()

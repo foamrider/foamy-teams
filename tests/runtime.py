@@ -203,6 +203,33 @@ ShellRoot {
     function() {
       if (!check(shell.publishedDuringChurn > 0, "settled updates publish during constant title changes, got " + shell.publishedDuringChurn)) return
       Plugin.TeamsService.matched = []
+      // One invalid stored account (a hand edit) makes the list read as empty;
+      // the editor must stay blocked so no save can replace the stored list.
+      shell.inline = true
+      shell.calls = []
+      one.settings = { accounts: [shell.accounts[0], Object.assign({}, shell.accounts[0], { id: "home", name: "Home", appId: "teams-home", url: "http://teams.example" })] }
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "addAccount") !== null }, 5000, "Settings opens on an invalid account list")
+    },
+    function() {
+      var page = shell.find(one.popup.bodyItem, "teamsSettings")
+      var add = shell.find(one.popup.bodyItem, "addAccount")
+      if (!check(one.definitions.length === 0 && !add.enabled, "Add is blocked while a stored account is invalid")) return
+      var hint = one.tr("Fix or remove the invalid account in shell.json to edit the account list.")
+      if (!check(page.error.indexOf(hint) >= 0 && page.error.indexOf(one.tr("Enter an HTTPS Teams URL.")) >= 0, "the page names the problem and the fix: " + page.error)) return
+      // A direct call (keyboard, a stale button) is refused as well.
+      page.edit(null)
+      if (!check(!page.editing, "the account editor stays closed")) return
+      // Other settings still save, and carry the stored accounts over verbatim.
+      one.savePreference("showCount", true)
+      if (!check(shell.calls.length === 1 && shell.calls[0].settings.accounts.length === 2 && shell.calls[0].settings.accounts[1].url === "http://teams.example", "the stored accounts survive another save: " + JSON.stringify(shell.calls))) return
+      // Fixing shell.json unblocks the editor.
+      one.settings = { accounts: shell.accounts }
+      expect(function() { return add.enabled && page.error === "" }, 5000, "a fixed account list unblocks Add", function() { return add.enabled + " " + JSON.stringify(page.error) })
+    },
+    function() {
+      one.closeSettings(); one.close()
       console.log("FOAMY DONE")
       Qt.quit()
     }

@@ -22,6 +22,9 @@ FoamySettingsPage {
   property string accountsBaseline: ""
   property bool adding: false
   property string commandDraft: "[]"
+  // The stored account list is invalid (see Panel.accountsProblem): no
+  // account edits until shell.json is fixed.
+  property bool accountsLocked: false
   readonly property var definitions: pref("accounts")
 
   signal save(string key, var value)
@@ -40,6 +43,7 @@ FoamySettingsPage {
   function pref(key) { return Prefs.value(Preferences.fields, root.settings, key) }
   function leaveEditor() { editing = false; localError = ""; resetScroll(); focusBack() }
   function edit(account) {
+    if (accountsLocked) return
     adding = !account
     accountsBaseline = JSON.stringify(definitions)
     draft = account ? JSON.parse(JSON.stringify(account)) : { id: "account-" + Date.now(), name: "", appId: "", enabled: true, browser: "omarchy-launch-webapp", profile: "", url: "https://teams.microsoft.com", command: [] }
@@ -51,6 +55,7 @@ FoamySettingsPage {
   }
   function change(key, value) { var next = Object.assign({}, draft); next[key] = value; draft = next }
   function saveAccount() {
+    if (accountsLocked) return
     if (accountsBaseline !== JSON.stringify(definitions)) { localError = tr("Settings changed elsewhere. Reopen the account editor."); return }
     var updated = Object.assign({}, draft)
     try { updated.command = JSON.parse(commandDraft) } catch (e) { localError = tr("Enter a JSON array of command arguments, or []."); return }
@@ -63,8 +68,9 @@ FoamySettingsPage {
     root.save("accounts", next)
   }
   function saved(key) { if (key === "accounts" && editing) leaveEditor() }
-  function remove(id) { root.save("accounts", definitions.filter(function(a) { return a.id !== id })) }
+  function remove(id) { if (!accountsLocked) root.save("accounts", definitions.filter(function(a) { return a.id !== id })) }
   function move(index, delta) {
+    if (accountsLocked) return
     var next = definitions.slice(), item = next.splice(index, 1)[0]
     next.splice(index + delta, 0, item)
     root.save("accounts", next)
@@ -137,10 +143,11 @@ FoamySettingsPage {
       font.pixelSize: FoamyStyle.font.bodySmall
     }
     FoamyButton {
+      objectName: "addAccount"
       focusable: true
       text: root.tr("Add account")
       iconName: "plus"
-      enabled: root.definitions.length < 32
+      enabled: !root.accountsLocked && root.definitions.length < 32
       onClicked: root.edit(null)
     }
   }
@@ -245,10 +252,10 @@ FoamySettingsPage {
     RowLayout {
       width: parent.width
       spacing: FoamyStyle.gap
-      FoamyAction { visible: !root.adding; focusable: true; destructive: true; label: root.tr("Remove"); iconName: "trash"; foreground: FoamyPalette.secondaryText; onClicked: root.remove(root.draft.id) }
+      FoamyAction { visible: !root.adding; enabled: !root.accountsLocked; focusable: true; destructive: true; label: root.tr("Remove"); iconName: "trash"; foreground: FoamyPalette.secondaryText; onClicked: root.remove(root.draft.id) }
       FoamyAction { focusable: true; label: root.tr("Cancel"); iconName: ""; foreground: FoamyPalette.secondaryText; onClicked: root.leaveEditor() }
       Item { Layout.fillWidth: true }
-      FoamyAction { focusable: true; label: root.tr("Save"); iconName: "check"; foreground: Commons.Color.accent; onClicked: root.saveAccount() }
+      FoamyAction { enabled: !root.accountsLocked; focusable: true; label: root.tr("Save"); iconName: "check"; foreground: Commons.Color.accent; onClicked: root.saveAccount() }
     }
   }
 }

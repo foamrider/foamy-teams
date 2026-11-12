@@ -71,5 +71,7 @@
   "Dim": "Dim",
   "Hide": "Hide",
   "When all accounts are closed": "When all accounts are closed",
-  "Show unread count in the bar": "Show unread count in the bar"
+  "Show unread count in the bar": "Show unread count in the bar",
+  "Fix or remove the invalid account in shell.json to edit the account list.": "Fix or remove the invalid account in shell.json to edit the account list.",
+  "The saved list in shell.json isn't valid, so it wasn't replaced.": "The saved list in shell.json isn't valid, so it wasn't replaced."
 }

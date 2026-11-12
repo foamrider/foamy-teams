@@ -59,6 +59,9 @@ the chat or person name from its window title, which anyone watching a shared
 screen can read while the panel is open.
 Settings are saved on the `foamy.teams` widget entry in Omarchy's `shell.json`.
 No accounts or machine-specific profiles are included in the plugin defaults.
+If a hand edit of `shell.json` leaves an account invalid, Settings names the
+problem and blocks account changes until the file is fixed, so a save can't
+replace the other stored accounts. The other settings still save.
 
 The window picker copies the application's ID. It cannot discover Microsoft
 account identities or infer which browser profile launches a window. Each

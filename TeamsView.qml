@@ -24,6 +24,7 @@ PanelKeyCatcher {
   property var candidates: []
   property bool saving: false
   property string settingsError: ""
+  property bool accountsLocked: false
   property bool retryable: false
 
   signal activate(var account)
@@ -274,6 +275,7 @@ PanelKeyCatcher {
     candidates: root.candidates
     saving: root.saving
     panelError: root.settingsError
+    accountsLocked: root.accountsLocked
     retryable: root.retryable
     onSave: function(key, value) { root.saveRequested(key, value) }
     onBackToPanel: root.settingsBack()
