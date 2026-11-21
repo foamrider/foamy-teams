@@ -690,9 +690,15 @@ def run():
     r.run(timeout=60)
     # Nothing may reach a real omarchy-* host command (the harness stubs log them).
     host = r.host_commands()
-    ok = r.ok and not host
+    # One IPC handler per shell: when every bar enables its handler, Quickshell
+    # uses one of them and warns about the others, so `qs ipc` still works and
+    # only this warning shows the second leader.
+    ipc_conflict = "another handler is registered for target foamy.teams" in r.log
+    ok = r.ok and not host and not ipc_conflict
     if host:
         print("  host commands:", host)
+    if ipc_conflict:
+        print("  more than one bar enabled the foamy.teams IPC handler")
     for line in r.log.splitlines():
         if ("WARN" in line or "rror" in line) and "wl_display" not in line and "window masks" not in line:
             print("  log:", line.strip())
