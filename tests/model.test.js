@@ -108,7 +108,7 @@ test('an account row takes the highest count of its windows and the context of t
     ['work', true, true, 5, 'Standup', 'two'],
     ['personal', false, false, null, '', null],
   ])
-  assert.equal(rows[0].definition, definitions[0])
+  assert.deepEqual(rows[0].definition, definitions[0])
   const [only] = M.accountsForWindows(definitions, [unfocused])
   assert.deepEqual([only.active, only.unread, only.context, only.toplevel], [false, 5, 'Chat', 'one'])
   assert.deepEqual(M.summary(rows), { totalUnread: 5, runningCount: 1, unknownCount: 1, accountCount: 2 })
