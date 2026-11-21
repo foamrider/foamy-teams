@@ -7,15 +7,23 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const M = require('../Model.js')
 
+// What the launcher and the client get: the test's environment without the
+// desktop session, so nothing they start can reach the real display.
+function launchEnv(extra) {
+  const env = { ...process.env, ...extra }
+  for (const name of ['WAYLAND_DISPLAY', 'HYPRLAND_INSTANCE_SIGNATURE', 'DISPLAY']) delete env[name]
+  return env
+}
+
 test('launchCommand refuses anything but a non-empty argv of strings without NUL', () => {
   for (const value of [null, [], '', [3], [''], ['  '], ['app', 'a\0b'], 'app']) assert.equal(M.launchCommand(value), null, JSON.stringify(value))
 })
 
 test('a missing client ends the launcher with exit 127', () => {
   const missing = M.launchCommand(['/nonexistent/foamy-teams-test'])
-  assert.equal(spawnSync(missing[0], missing.slice(1)).status, 127, 'absolute path')
+  assert.equal(spawnSync(missing[0], missing.slice(1), { env: launchEnv() }).status, 127, 'absolute path')
   const missingOnPath = M.launchCommand(['foamy-teams-no-such-client'])
-  assert.equal(spawnSync(missingOnPath[0], missingOnPath.slice(1)).status, 127, 'PATH lookup')
+  assert.equal(spawnSync(missingOnPath[0], missingOnPath.slice(1), { env: launchEnv() }).status, 127, 'PATH lookup')
 })
 
 test('the launcher returns at once and the client runs on in its own session with literal arguments', t => {
@@ -45,7 +53,7 @@ test('the launcher returns at once and the client runs on in its own session wit
     'read -r stat < /proc/$$/stat; set -- "$@" "$(echo "$stat" | cut -d" " -f6)" "$$"\n' +
     'printf "%s\\n" "$@" > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"\necho leaked; echo leaked >&2\nexec sleep 10\n', { mode: 0o755 })
   const command = M.launchCommand([client, `$(touch ${marker})`, 'two words', '--flag'])
-  const run = spawnSync(command[0], command.slice(1), { env: { ...process.env, OUT: out }, timeout: 5000 })
+  const run = spawnSync(command[0], command.slice(1), { env: launchEnv({ OUT: out }), timeout: 5000 })
   assert.equal(run.error, undefined, 'the launcher returns without waiting for the client')
   assert.equal(run.status, 0)
   assert.equal(run.stdout.toString() + run.stderr.toString(), '', 'the client output does not reach the launcher')
