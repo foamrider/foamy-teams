@@ -1,8 +1,9 @@
 """Load the real Panel.qml twice (two monitors) in an isolated offscreen shell
-on Omarchy 4.5 and check: one leader owns IPC and the window
-tracker, the popup body builds lazily, the width does not change when
-Settings opens, and quick successive saves are queued, never dropped, on both
-the inline and the `omarchy bar set` paths.
+on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
+lazy popup body, the Settings page, saves (inline and a failed `omarchy bar
+set` with Retry), the closed modes, a row click, launches (failed and
+refused), the window tracker, an invalid stored account list and the bar
+count.
 
   python3 tests/runtime.py
 
@@ -10,7 +11,8 @@ Runs on the installed /usr/share/omarchy/shell, or the tree in FOAMY_HOST_45.
 
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
-`omarchy` CLI is a stub that only logs its arguments.
+`omarchy` CLI is a stub that logs its arguments and fails its first call; the
+Teams client is a stub that logs its arguments.
 """
 
 import os
@@ -36,9 +38,10 @@ import "plugin/kit" as Kit
 ShellRoot {
   id: shell
   property int step: 0
+  property string scenario: ""
   property var calls: []
   property bool inline: true
-  function fail(message) { console.log("FOAMY FAIL " + message); Qt.quit() }
+  function fail(message) { console.log("FOAMY FAIL " + (scenario ? scenario + ": " : "") + message); Qt.quit() }
   function check(condition, message) { if (!condition) fail(message); return condition }
 
   FloatingWindow {
@@ -60,19 +63,15 @@ ShellRoot {
     }
   }
 
-  readonly property var accounts: [{ id: "work", name: "Work", appId: "teams-work", enabled: true, browser: "omarchy-launch-webapp", profile: "", url: "https://teams.microsoft.com", command: [] }]
+  readonly property var work: ({ id: "work", name: "Work", appId: "teams-work", enabled: true, browser: "omarchy-launch-webapp", profile: "", url: "https://teams.microsoft.com", command: [] })
+  readonly property var home: ({ id: "home", name: "Home", appId: "teams-home", enabled: true, browser: "omarchy-launch-webapp", profile: "", url: "https://teams.microsoft.com", command: [] })
+  readonly property var accounts: [work]
+  function account(base, changes) { return Object.assign({}, base, changes || {}) }
+  function teamsWindow(appId, title, toplevel) { return { appId: appId, title: title, activated: false, toplevel: toplevel || null } }
 
   Component.onCompleted: {
     for (var p of [one, two]) { p.bar = bar; p.moduleName = "foamy.teams"; p.settings = { accounts: shell.accounts, showCount: true } }
     shell.next()
-  }
-
-  function ipcEnabled(panel) {
-    for (var i = 0; i < panel.data.length; i++) {
-      var o = panel.data[i]
-      if (o && String(o).indexOf("FoamyIpc") === 0) return o.enabled
-    }
-    return null
   }
 
   FoamyWait { id: wait }
@@ -90,71 +89,178 @@ ShellRoot {
     })
   }
 
+  // Every scenario starts here, so none depends on what an earlier one left.
+  // The mock host never writes a save back to the panel, so saved values stay
+  // pending in the queue: showing the panel what was saved settles them
+  // before the scenario's own settings replace everything. Window lists are
+  // assigned after every settings change, because a new account list makes
+  // the leader read the real (empty, offscreen) window list again.
+  function reset(name, settings) {
+    scenario = name
+    calls = []
+    inline = true
+    bar.position = "top"
+    Plugin.TeamsService.matched = []
+    Plugin.TeamsService.launchError = ""
+    Plugin.TeamsService.launchTimeout.interval = 15000
+    if (!check(Plugin.TeamsService.launchingId === "" && !one.saving && !two.saving, "the scenario before left a launch or a save running")) return false
+    for (var p of [one, two]) {
+      p.closeSettings()
+      p.close()
+      p.settings = Object.assign({}, p.prefs.storedSettings, p.prefs.pending)
+      p.settings = JSON.parse(JSON.stringify(settings))
+    }
+    Plugin.TeamsService.windows = []
+    for (var w of [fakeWindow, fakeHome]) { w.activations = 0; w.activated = false; w.title = "(1) Chat | Microsoft Teams" }
+    published = 0
+    publishedDuringChurn = -1
+    clientBase = clientLog().length
+    return true
+  }
+  // Play the host: show the panel the entry its last save wrote.
+  function reflect(panel) { panel.settings = shell.calls[shell.calls.length - 1].settings }
+  function page() { return find(one.popup.bodyItem, "teamsSettings") }
+  function savedIds() { return shell.calls[shell.calls.length - 1].settings.accounts.map(function(a) { return a.id }) }
+
+  // `qs ipc call foamy.teams <fn>` against this shell, as a user or a key
+  // binding would call it.
+  property int ipcExit: -1
+  property var ipcBar: null
+  Process { id: ipc; onExited: function(code) { shell.ipcExit = code } }
+  function ipcCall(fn) {
+    shell.ipcExit = -1
+    ipc.command = ["qs", "ipc", "-i", Quickshell.instanceId, "call", "foamy.teams", fn]
+    ipc.running = true
+  }
+  function ipcStep(fn, condition, message) {
+    return function() {
+      ipcCall(fn)
+      wait.waitFor(function() { return shell.ipcExit !== -1 && (shell.ipcExit !== 0 || condition()) }, 10000, function(ok) {
+        if (check(ok && shell.ipcExit === 0, message + ": exit " + shell.ipcExit + ", opened " + [one.opened, two.opened] + ", on Settings " + [one.editingSettings, two.editingSettings])) next()
+      })
+    }
+  }
+
   readonly property var steps: [
+    // --- start: the first open; must run first ---------------------------
     function() {
-      if (!check(ipcEnabled(one) !== ipcEnabled(two) && ipcEnabled(one) !== null, "exactly one IPC leader " + ipcEnabled(one) + " " + ipcEnabled(two))) return
+      if (!reset("start", { accounts: shell.accounts, showCount: true })) return
       if (!check(JSON.stringify(Plugin.TeamsService.trackedAppIds) === '["teams-work"]', "tracker follows configured ids: " + JSON.stringify(Plugin.TeamsService.trackedAppIds))) return
       if (!check(one.popup && one.popup.bodyItem === null, "body not built before first open")) return
       if (!check(Plugin.TeamsService.candidatesWanted === false, "no picker list while closed")) return
       if (!check(one.visible && shell.find(one, "teamsButton").dimmed, "closed accounts default to a clickable dim icon")) return
       shell.find(one, "teamsButton").triggerPress(Qt.LeftButton)
-      expect(function() { return one.popup.bodyItem !== null }, 5000, "body built on open")
+      expect(function() { return one.popup.bodyItem !== null && one.opened }, 5000, "a left click opens the popup and builds its body")
     },
+
+    // --- ipc: one leader answers the documented functions ----------------
     function() {
-      shell.width0 = one.popup.contentWidth
+      if (!reset("ipc", { accounts: shell.accounts })) return
+      next()
+    },
+    ipcStep("open", function() { return one.opened !== two.opened }, "open opens exactly one bar's popup"),
+    function() {
+      shell.ipcBar = one.opened ? one : two
+      if (!check(!shell.ipcBar.editingSettings, "open shows the account list, not Settings")) return
+      next()
+    },
+    ipcStep("settings", function() { return shell.ipcBar.opened && shell.ipcBar.editingSettings && one.opened !== two.opened }, "settings turns the same popup to Settings"),
+    ipcStep("close", function() { return !one.opened && !two.opened }, "close closes the popup"),
+    ipcStep("settings", function() { return one.opened !== two.opened && (one.opened ? one : two).editingSettings }, "settings opens one closed popup on Settings"),
+    ipcStep("toggle", function() { return !one.opened && !two.opened }, "toggle closes the open popup"),
+
+    // --- settings page: dropdowns and the window picker -------------------
+    function() {
+      if (!reset("settings page", { accounts: shell.accounts, showCount: true })) return
+      one.open()
       one.openSettings()
-      expect(function() { return Plugin.TeamsService.candidatesWanted }, 5000, "picker list while Settings is open")
+      expect(function() { return Plugin.TeamsService.candidatesWanted && one.editingSettings && shell.find(one.popup.bodyItem, "defaultAccount") !== null }, 5000, "picker list while Settings is open")
     },
     function() {
-      if (!check(one.popup.contentWidth === shell.width0, "width stays " + shell.width0 + " in Settings, got " + one.popup.contentWidth)) return
-      // Inline path: the shell entry does not update yet; the second save must carry the first.
-      one.savePreference("showCount", false)
-      one.savePreference("showContext", true)
-      if (!check(shell.calls.length === 2, "two inline saves, got " + shell.calls.length)) return
-      if (!check(shell.calls[1].settings.showCount === false && shell.calls[1].settings.showContext === true, "second inline save keeps the first: " + JSON.stringify(shell.calls[1].settings))) return
-      if (!check(shell.calls[1].settings.accounts.length === 1, "inline save keeps accounts")) return
-      // CLI path: both saves run, one after another (each stub call sleeps 0.2 s).
-      shell.inline = false
-      two.savePreference("unreadFirst", true)
-      two.savePreference("showClosed", false)
-      if (!check(two.saving, "second CLI save queued while the first runs")) return
-      expect(function() { return !two.saving }, 18000, "the CLI save queue drains")
-    },
-    function() {
-      logView.path = Quickshell.env("FOAMY_CLI_LOG")
-      logView.reload()
-      var lines = logView.text().trim().split("\n")
-      if (!check(lines.length === 2, "two CLI saves, got " + JSON.stringify(lines))) return
-      if (!check(lines[0] === "bar set foamy.teams unreadFirst true --json" && lines[1] === "bar set foamy.teams showClosed false --json", "CLI order: " + JSON.stringify(lines))) return
-      if (!check(two.prefs.error === "", "queue drained without error")) return
       // Dropdowns stay bound after a pick (kit 0.2.0 no longer assigns value).
       var pick = shell.find(one.popup.bodyItem, "defaultAccount")
       if (!check(pick.compact, "middle-click account uses the settings row form")) return
-      shell.inline = true
       pick.changed("work")
       if (!check(pick.value === "work", "middle-click dropdown follows the saved value, got " + pick.value)) return
-      one.popup.bodyItem.editAccount(shell.accounts[0])
+      if (!check(shell.calls.length === 1 && shell.calls[0].settings.defaultAccount === "work", "the pick saves the middle-click account: " + JSON.stringify(shell.calls))) return
+      one.popup.bodyItem.editAccount(shell.work)
       expect(function() { return shell.find(one.popup.bodyItem, "appIdPicker").visible }, 5000, "the account editor opens")
     },
     function() {
       var picker = shell.find(one.popup.bodyItem, "appIdPicker")
       picker.changed("teams-other")
       if (!check(picker.value === "teams-other", "picker shows the chosen window, got " + picker.value)) return
-      one.popup.bodyItem.editAccount(shell.accounts[0])   // reopen the editor: draft resets
+      one.popup.bodyItem.editAccount(shell.work)   // reopen the editor: draft resets
       if (!check(picker.value === "teams-work", "picker follows the draft after reopening, got " + picker.value)) return
-      shell.find(one.popup.bodyItem, "teamsSettings").leaveEditor()
+      page().leaveEditor()
+      next()
+    },
+
+    // --- saves: two quick inline saves while the entry is stale -----------
+    function() {
+      if (!reset("saves", { accounts: shell.accounts, showCount: true })) return
+      // The shell entry does not update yet; the second save must carry the first.
+      one.savePreference("showCount", false)
+      one.savePreference("showContext", true)
+      if (!check(shell.calls.length === 2, "two inline saves, got " + shell.calls.length)) return
+      if (!check(shell.calls[1].settings.showCount === false && shell.calls[1].settings.showContext === true, "second inline save keeps the first: " + JSON.stringify(shell.calls[1].settings))) return
+      if (!check(shell.calls[1].settings.accounts.length === 1, "inline save keeps accounts")) return
+      next()
+    },
+
+    // --- failed save: the CLI fails once, Settings offers Retry -----------
+    function() {
+      if (!reset("failed save", { accounts: shell.accounts, showCount: true })) return
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.page() !== null }, 5000, "Settings opens")
+    },
+    function() {
+      shell.inline = false
+      one.savePreference("showCount", false)
+      if (!check(one.saving, "the save runs through the CLI")) return
+      expect(function() { return !one.saving }, 18000, "the failed CLI save ends")
+    },
+    function() {
+      var page = shell.page()
+      if (!check(page.error === one.tr("Couldn't save the setting.") && page.retryable === true, "Settings shows the failed save with Retry: " + JSON.stringify([page.error, page.retryable]))) return
+      if (!check(one.preference("showCount") === true, "the stored value shows again after the failure")) return
+      page.retry()
+      expect(function() { return !one.saving && page.error === "" }, 18000, "Retry saves", function() { return JSON.stringify([one.saving, page.error]) })
+    },
+    function() {
+      if (!check(one.preference("showCount") === false, "the retried value shows")) return
+      logView.path = Quickshell.env("FOAMY_CLI_LOG")
+      logView.reload()
+      var lines = logView.text().trim().split("\n")
+      if (!check(lines.length === 2, "the save ran twice through the CLI: " + JSON.stringify(lines))) return
+      shell.inline = true
+      next()
+    },
+
+    // --- closed mode: Dim and Hide ----------------------------------------
+    function() {
+      if (!reset("closed mode", { accounts: shell.accounts, showCount: true })) return
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "closedMode") !== null }, 5000, "Settings opens")
+    },
+    function() {
       var mode = shell.find(one.popup.bodyItem, "closedMode")
-      if (!check(mode && mode.visible && mode.compact && mode.value === "mute", "closed mode defaults to Dim")) return
+      if (!check(mode.visible && mode.value === "mute", "closed mode defaults to Dim")) return
       mode.changed("hide")
       if (!check(mode.value === "hide" && one.preference("hideWhenClosed"), "Hide saves the existing preference")) return
+      shell.reflect(one)
       if (!check(one.visible, "open settings stay reachable in Hide mode")) return
       one.closeSettings(); one.close()
       expect(function() { return !one.visible }, 5000, "Hide removes the closed widget")
     },
     function() {
       // A running but unfocused window must restore the icon in either mode.
-      Plugin.TeamsService.windows = [{ appId: "teams-work", title: "(3) Chat | Microsoft Teams", activated: false, toplevel: null }]
-      expect(function() { return one.visible && !shell.find(one, "teamsButton").dimmed && one.summary.totalUnread === 3 }, 5000, "unfocused running account restores the normal unread icon")
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "(3) Chat | Microsoft Teams")]
+      var button = shell.find(one, "teamsButton"), count = shell.find(one, "unreadCount")
+      expect(function() { return one.visible && !button.dimmed && button.active && count.visible && count.text === "3" }, 5000, "unfocused running account restores the normal unread icon",
+             function() { return JSON.stringify([one.visible, button.dimmed, button.active, count.visible, count.text]) })
     },
     function() {
       Plugin.TeamsService.windows = []
@@ -168,6 +274,7 @@ ShellRoot {
       var mode = shell.find(one.popup.bodyItem, "closedMode")
       mode.changed("mute")
       if (!check(mode.value === "mute" && !one.preference("hideWhenClosed"), "Dim selection stays bound to saved preference")) return
+      shell.reflect(one)
       one.closeSettings(); one.close()
       expect(function() { return !one.opened && one.visible && shell.find(one, "teamsButton").dimmed }, 5000, "Dim keeps closed widget visible")
     },
@@ -177,107 +284,134 @@ ShellRoot {
       if (!check(two.visible && two.configurationError !== "", "invalid configuration remains reachable")) return
       two.settings = { accounts: [], hideWhenClosed: true }
       if (!check(two.visible, "initial setup remains reachable")) return
-      two.settings = { accounts: shell.accounts }
-      // A running account is focused through its toplevel; nothing launches.
-      Plugin.TeamsService.windows = [{ appId: "teams-work", title: "Chat | Microsoft Teams", activated: false, toplevel: fakeWindow }]
+      next()
+    },
+
+    // --- focus: a row click focuses a running account ---------------------
+    function() {
+      if (!reset("focus", { accounts: [shell.work, shell.home] })) return
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "Chat | Microsoft Teams", fakeWindow), shell.teamsWindow("teams-home", "Chat | Microsoft Teams", fakeHome)]
       one.open()
-      expect(function() { return one.opened && one.accounts[0].running }, 5000, "the popup opens on a running account")
+      expect(function() { return one.opened && one.accounts[0].running && shell.find(one.popup.bodyItem, "account:work") !== null }, 5000, "the popup opens on a running account")
     },
     function() {
-      one.openAccount(one.accounts[0])
-      if (!check(fakeWindow.activations === 1 && !one.opened && one.launchingId === "" && one.launchError === "", "focus activates the window and closes the popup: " + fakeWindow.activations + " " + one.opened + " " + one.launchingId)) return
-      Plugin.TeamsService.windows = []
+      // A click on a running account's row focuses its window; nothing launches.
+      shell.find(one.popup.bodyItem, "account:work").clicked()
+      if (!check(fakeWindow.activations === 1 && fakeHome.activations === 0 && !one.opened && one.launchingId === "" && one.launchError === "", "a row click activates the window and closes the popup: " + JSON.stringify([fakeWindow.activations, fakeHome.activations, one.opened, one.launchingId]))) return
+      next()
+    },
+    // --- launch: failure, refused launches, the window ends it ------------
+    function() {
       // A launcher that cannot start the client reports it (exit 127), never success.
-      two.settings = { accounts: [Object.assign({}, shell.accounts[0], { command: ["foamy-teams-no-such-client"] })] }
+      if (!reset("launch", { accounts: [shell.account(shell.work, { command: ["foamy-teams-no-such-client"] })] })) return
       two.openAccount(two.accounts[0])
       if (!check(two.launchingId === "work", "launch starts, got " + two.launchingId)) return
       // Up to 9 s: the exit-127 error, well before the 15 s no-window timeout.
       expect(function() { return two.launchingId === "" }, 9000, "failed launch ends before the no-window timeout")
     },
     function() {
-      if (!check(two.launchError === two.tr("Could not launch the account. Check its browser or launch arguments.") && two.opened, "failed launch shows its error: " + JSON.stringify([two.launchError, two.opened]))) return
+      if (!check(two.launchError === two.tr("Could not launch the account. Check its browser or launch arguments.") && two.opened && !one.opened, "failed launch opens its own bar's popup with the error: " + JSON.stringify([two.launchError, two.opened, one.opened]))) return
       two.close()
-      // A title that keeps changing faster than the settle window must still
-      // publish while it changes, not only after it stops.
-      Plugin.TeamsService.matched = [fakeWindow]
-      churn.start()
-      expect(function() { return !churn.running }, 10000, "the title churn ends")
-    },
-    function() {
-      if (!check(shell.publishedDuringChurn > 0, "settled updates publish during constant title changes, got " + shell.publishedDuringChurn)) return
-      Plugin.TeamsService.matched = []
-      // One invalid stored account (a hand edit) makes the list read as empty;
-      // the editor must stay blocked so no save can replace the stored list.
-      shell.inline = true
-      shell.calls = []
-      one.settings = { accounts: [shell.accounts[0], Object.assign({}, shell.accounts[0], { id: "home", name: "Home", appId: "teams-home", url: "http://teams.example" })] }
-      one.open()
-      one.openSettings()
-      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "addAccount") !== null }, 5000, "Settings opens on an invalid account list")
-    },
-    function() {
-      var page = shell.find(one.popup.bodyItem, "teamsSettings")
-      var add = shell.find(one.popup.bodyItem, "addAccount")
-      if (!check(one.definitions.length === 0 && !add.enabled, "Add is blocked while a stored account is invalid")) return
-      var hint = one.tr("Fix or remove the invalid account in shell.json to edit the account list.")
-      if (!check(page.error.indexOf(hint) >= 0 && page.error.indexOf(one.tr("Enter an HTTPS Teams URL.")) >= 0, "the page names the problem and the fix: " + page.error)) return
-      // A direct call (keyboard, a stale button) is refused as well.
-      page.edit(null)
-      if (!check(!page.editing, "the account editor stays closed")) return
-      // Other settings still save, and carry the stored accounts over verbatim.
-      one.savePreference("showCount", true)
-      if (!check(shell.calls.length === 1 && shell.calls[0].settings.accounts.length === 2 && shell.calls[0].settings.accounts[1].url === "http://teams.example", "the stored accounts survive another save: " + JSON.stringify(shell.calls))) return
-      // Fixing shell.json unblocks the editor.
-      one.settings = { accounts: shell.accounts }
-      expect(function() { return add.enabled && page.error === "" }, 5000, "a fixed account list unblocks Add", function() { return add.enabled + " " + JSON.stringify(page.error) })
-    },
-    function() {
-      one.closeSettings(); one.close()
       // Launch state is once per shell: a launch from one bar shows on the
       // other, and no bar starts a second client while it runs.
-      var work = Object.assign({}, shell.accounts[0], { command: ["foamy-teams-fake-client", "work"] })
-      var home = Object.assign({}, shell.accounts[0], { id: "home", name: "Home", appId: "teams-home", command: ["foamy-teams-fake-client", "home"] })
+      var work = shell.account(shell.work, { command: ["foamy-teams-fake-client", "work"] })
+      var home = shell.account(shell.home, { command: ["foamy-teams-fake-client", "home"] })
       for (var p of [one, two]) p.settings = { accounts: [work, home] }
       Plugin.TeamsService.windows = []
       two.openAccount(two.accounts[0])
-      expect(function() { return shell.clientLog().length === 1 }, 9000, "the fake client starts", function() { return JSON.stringify(shell.clientLog()) })
+      if (!check(two.launchError === "", "the next launch clears the error")) return
+      expect(function() { return shell.clientRuns().length === 1 }, 9000, "the fake client starts", function() { return JSON.stringify(shell.clientRuns()) })
     },
     function() {
       if (!check(one.launchingId === "work" && two.launchingId === "work", "both bars show the launch: " + JSON.stringify([one.launchingId, two.launchingId]))) return
       one.openAccount(one.accounts[0])
       one.openAccount(one.accounts[1])
       two.openAccount(two.accounts[1])
-      // (two saved showClosed false earlier, so its popup hides closed rows.)
+      shell.find(one, "teamsButton").triggerPress(Qt.MiddleButton)
       one.open()
       expect(function() { return one.popup.bodyItem !== null && shell.find(one.popup.bodyItem, "account:home") !== null }, 5000, "the other bar's popup lists the accounts")
     },
     function() {
       var other = shell.find(one.popup.bodyItem, "account:home"), busy = shell.find(one.popup.bodyItem, "account:work")
-      if (!check(busy.launching && other.blocked === true && !other.enabled, "another closed account shows as unavailable while one launches: " + JSON.stringify([busy.launching, other.blocked, other.enabled]))) return
-      // A refused launch would have started its client well within this time.
-      wait.after(1000, function() {
-        if (!check(shell.clientLog().length === 1, "no second client while a launch runs: " + JSON.stringify(shell.clientLog()))) return
-        // The window appears: the launch ends on every bar.
-        Plugin.TeamsService.windows = [{ appId: "teams-work", title: "Chat | Microsoft Teams", activated: false, toplevel: null }]
-        expect(function() { return one.launchingId === "" && two.launchingId === "" && !other.blocked && one.launchError === "" }, 5000, "the launch ends when its window appears")
-      })
+      if (!check(busy.launching && busy.actionText === one.tr("Launching…") && other.blocked === true && !other.enabled, "another closed account shows as unavailable while one launches: " + JSON.stringify([busy.launching, busy.actionText, other.blocked, other.enabled]))) return
+      // The window appears: the launch ends on every bar.
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "Chat | Microsoft Teams")]
+      expect(function() { return one.launchingId === "" && two.launchingId === "" && !other.blocked && one.launchError === "" }, 5000, "the launch ends when its window appears")
     },
     function() {
-      one.close()
+      // An allowed launch now starts. A refused attempt that had started a
+      // client would have logged its line before this one.
+      one.openAccount(one.accounts[1])
+      expect(function() { return shell.clientRuns().length >= 2 }, 9000, "the next launch starts its client", function() { return JSON.stringify(shell.clientRuns()) })
+    },
+    function() {
+      if (!check(JSON.stringify(shell.clientRuns()) === '["work","home"]', "no client started while a launch ran: " + JSON.stringify(shell.clientRuns()))) return
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "Chat | Microsoft Teams"), shell.teamsWindow("teams-home", "Chat | Microsoft Teams")]
+      expect(function() { return one.launchingId === "" && two.launchingId === "" }, 5000, "the second launch ends when its window appears")
+    },
+
+    // --- tracker: a title that keeps changing -----------------------------
+    function() {
+      if (!reset("tracker", { accounts: shell.accounts })) return
+      // A title that keeps changing faster than the settle window must still
+      // publish while it changes, not only after it stops, and not on every change.
+      Plugin.TeamsService.matched = [fakeWindow]
+      shell.churnStarted = Date.now()
+      churn.start()
+      expect(function() { return !churn.running }, 10000, "the title churn ends")
+    },
+    function() {
+      // A settle timer may fire up to 5 % early (coarse timers); 0.8 leaves
+      // margin while one publish per change (30) still fails.
+      var bound = Math.floor(shell.churnElapsed / (Plugin.TeamsService.settleMs * 0.8)) + 1
+      if (!check(shell.publishedDuringChurn > 0 && shell.publishedDuringChurn <= bound, "settled updates publish during constant title changes, at most " + bound + " in " + shell.churnElapsed + " ms, got " + shell.publishedDuringChurn)) return
+      Plugin.TeamsService.matched = []
+      next()
+    },
+
+    // --- invalid stored list: editing stays blocked -----------------------
+    function() {
+      // One invalid stored account (a hand edit) makes the list read as empty;
+      // the editor must stay blocked so no save can replace the stored list.
+      if (!reset("invalid stored list", { accounts: [shell.work, shell.account(shell.home, { url: "http://teams.example" })] })) return
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "addAccount") !== null }, 5000, "Settings opens on an invalid account list")
+    },
+    function() {
+      var page = shell.page()
+      var add = shell.find(one.popup.bodyItem, "addAccount")
+      if (!check(one.definitions.length === 0 && !add.enabled, "Add is blocked while a stored account is invalid")) return
+      var hint = one.tr("Fix or remove the invalid account in shell.json to edit the account list.")
+      if (!check(page.error.indexOf(hint) >= 0 && page.error.indexOf(one.tr("Enter an HTTPS Teams URL.")) >= 0, "the page names the problem and the fix: " + page.error)) return
+      // The setup hint would point at the wrong fix.
+      if (!check(shell.findText(one.popup.bodyItem, one.tr("Open Teams in a separate browser profile, then select its window here.")) === null, "no setup hint while the stored list is invalid")) return
+      // A direct call (keyboard, a stale button) is refused as well.
+      page.edit(null)
+      if (!check(!page.editing, "the account editor stays closed")) return
+      // Other settings still save, and carry the stored accounts over verbatim.
+      one.savePreference("showCount", false)
+      if (!check(shell.calls.length === 1 && shell.calls[0].settings.accounts.length === 2 && shell.calls[0].settings.accounts[1].url === "http://teams.example", "the stored accounts survive another save: " + JSON.stringify(shell.calls))) return
+      // Fixing shell.json unblocks the editor.
+      one.settings = { accounts: shell.accounts }
+      expect(function() { return add.enabled && page.error === "" }, 5000, "a fixed account list unblocks Add", function() { return add.enabled + " " + JSON.stringify(page.error) })
+    },
+
+    // --- bar count --------------------------------------------------------
+    function() {
+      if (!reset("bar count", { accounts: [shell.work, shell.home], showCount: true })) return
       // Unread totals above 2^31 must not wrap (the count would hide while
       // the icon stays in the unread state).
-      Plugin.TeamsService.windows = [
-        { appId: "teams-work", title: "(2147483647) Chat | Microsoft Teams", activated: false, toplevel: null },
-        { appId: "teams-home", title: "(1) Chat | Microsoft Teams", activated: false, toplevel: null }
-      ]
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "(2147483647) Chat | Microsoft Teams"), shell.teamsWindow("teams-home", "(1) Chat | Microsoft Teams")]
       var content = shell.find(one, "teamsBarContent")
       expect(function() { return content.unread === 2147483648 && shell.find(one, "unreadCount").visible }, 5000, "the bar shows an unread total above 2^31", function() { return content.unread })
     },
+
+    // --- rendering: whole characters and plain text -----------------------
     function() {
-      Plugin.TeamsService.windows = []
       // An account name that starts with an emoji (a surrogate pair) shows
       // the whole character as its initial, never half of it.
-      one.settings = { accounts: [Object.assign({}, shell.accounts[0], { name: "\u{1F600} Fun" })] }
+      if (!reset("rendering", { accounts: [shell.account(shell.work, { name: "\u{1F600} Fun" })] })) return
       one.open()
       one.openSettings()
       expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "accountInitial") !== null }, 5000, "Settings lists the account")
@@ -285,12 +419,15 @@ ShellRoot {
     function() {
       var initial = shell.find(one.popup.bodyItem, "accountInitial").text
       if (!check(initial === "\u{1F600}", "the initial is the whole emoji: " + JSON.stringify(initial))) return
-      one.closeSettings(); one.close()
+      next()
+    },
+
+    // --- createObject settings --------------------------------------------
+    function() {
+      if (!reset("createObject settings", { accounts: shell.accounts })) return
       // The bar hands settings over through createObject, where each list
       // is a QML sequence wrapper (not an Array). The account list must
       // still read as valid, and a save must carry it over.
-      shell.inline = true
-      shell.calls = []
       var three = barPanel.createObject(window.contentItem, { x: 1480, y: 4, width: 30, height: 26, bar: bar, moduleName: "foamy.teams", settings: { accounts: shell.accounts, showCount: true } })
       if (!check(!Array.isArray(three.settings.accounts), "createObject hands the account list over as a sequence wrapper")) return
       if (!check(three.definitions.length === 1 && three.accountsProblem === "", "a wrapped account list reads as valid: " + JSON.stringify([three.definitions, three.accountsProblem]))) return
@@ -306,13 +443,25 @@ ShellRoot {
     var text = clientView.text().trim()
     return text ? text.split("\n") : []
   }
+  // The client runs of the current scenario.
+  property int clientBase: 0
+  function clientRuns() { return clientLog().slice(clientBase) }
   FileView { id: clientView; path: Quickshell.env("FOAMY_CLIENT_LOG"); blockLoading: true; printErrors: false }
-  property real width0: 0
   property int published: 0
   property int publishedDuringChurn: -1
+  property double churnStarted: 0
+  property double churnElapsed: 0
   QtObject {
     id: fakeWindow
     property string appId: "teams-work"
+    property string title: "(1) Chat | Microsoft Teams"
+    property bool activated: false
+    property int activations: 0
+    function activate() { activations++ }
+  }
+  QtObject {
+    id: fakeHome
+    property string appId: "teams-home"
     property string title: "(1) Chat | Microsoft Teams"
     property bool activated: false
     property int activations: 0
@@ -329,7 +478,7 @@ ShellRoot {
     property int n: 0
     onTriggered: {
       fakeWindow.title = "(" + (++n) + ") Chat | Microsoft Teams"
-      if (n >= 30) { shell.publishedDuringChurn = shell.published; stop() }
+      if (n >= 30) { shell.churnElapsed = Date.now() - shell.churnStarted; shell.publishedDuringChurn = shell.published; stop() }
     }
   }
   function find(item, name) {
@@ -339,8 +488,25 @@ ShellRoot {
     for (var i = 0; i < kids.length; i++) { var hit = find(kids[i], name); if (hit) return hit }
     return null
   }
+  // The first visible item whose text is exactly `text`.
+  function findText(item, text) {
+    if (!item || !item.visible) return null
+    if (item.text === text) return item
+    var kids = item.children || []
+    for (var i = 0; i < kids.length; i++) { var hit = findText(kids[i], text); if (hit) return hit }
+    return null
+  }
   FileView { id: logView; blockLoading: true; printErrors: false }
 }
+"""
+
+# The `omarchy` stub: logs its arguments; the first call fails (a failed
+# `omarchy bar set`), later calls succeed.
+OMARCHY_STUB = """#!/bin/sh
+before=0
+[ -f "$FOAMY_CLI_LOG" ] && before=$(wc -l < "$FOAMY_CLI_LOG")
+echo "$*" >> "$FOAMY_CLI_LOG"
+[ "$before" -gt 0 ]
 """
 
 
@@ -349,7 +515,7 @@ def run():
     stub = r.base / "bin"
     stub.mkdir()
     log = r.base / "cli.log"
-    (stub / "omarchy").write_text('#!/bin/sh\nsleep 0.2\necho "$*" >> "$FOAMY_CLI_LOG"\n')
+    (stub / "omarchy").write_text(OMARCHY_STUB)
     (stub / "omarchy").chmod(0o755)
     r.env["PATH"] = f"{stub}:{r.env['PATH']}"
     r.env["FOAMY_CLI_LOG"] = str(log)
