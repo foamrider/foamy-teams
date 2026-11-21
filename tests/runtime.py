@@ -11,8 +11,8 @@ Runs on the installed /usr/share/omarchy/shell, or the tree in FOAMY_HOST_45.
 
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
-`omarchy` CLI is a stub that logs its arguments and fails its first call; the
-Teams client is a stub that logs its arguments.
+`omarchy` CLI is a stub that logs its arguments and fails one call when a
+scenario asks for it; the Teams client is a stub that logs its arguments.
 """
 
 import os
@@ -52,6 +52,11 @@ ShellRoot {
     Plugin.Panel { id: two; x: 1440; y: 4; width: 30; height: 26 }
   }
   Component { id: barPanel; Plugin.Panel { } }
+  // Two handlers on one target on purpose: run() requires Quickshell's
+  // conflict warning for them, so a reworded warning fails the run instead
+  // of hiding a second foamy.teams handler.
+  IpcHandler { target: "foamy-teams-probe"; function ping(): void {} }
+  IpcHandler { target: "foamy-teams-probe"; function ping(): void {} }
 
   MockBar {
     id: bar
@@ -115,6 +120,7 @@ ShellRoot {
     published = 0
     publishedDuringChurn = -1
     clientBase = clientLog().length
+    cliBase = cliLog().length
     return true
   }
   // Play the host: show the panel the entry its last save wrote.
@@ -217,6 +223,8 @@ ShellRoot {
     },
     function() {
       shell.inline = false
+      // The stub fails the next CLI call, then removes the marker.
+      cliFail.setText("1\n")
       one.savePreference("showCount", false)
       if (!check(one.saving, "the save runs through the CLI")) return
       expect(function() { return !one.saving }, 18000, "the failed CLI save ends")
@@ -230,9 +238,7 @@ ShellRoot {
     },
     function() {
       if (!check(one.preference("showCount") === false, "the retried value shows")) return
-      logView.path = Quickshell.env("FOAMY_CLI_LOG")
-      logView.reload()
-      var lines = logView.text().trim().split("\n")
+      var lines = shell.cliLog().slice(shell.cliBase)
       if (!check(lines.length === 2, "the save ran twice through the CLI: " + JSON.stringify(lines))) return
       shell.inline = true
       next()
@@ -423,7 +429,8 @@ ShellRoot {
       Plugin.TeamsService.launchTimeout.interval = 200
       two.openAccount(two.accounts[0])
       if (!check(two.launchingId === "work", "launch starts, got " + two.launchingId)) return
-      expect(function() { return two.launchingId === "" && two.opened && !Plugin.TeamsService.launcher.running }, 9000, "a launch without a window ends")
+      expect(function() { return two.launchingId === "" && two.opened && !Plugin.TeamsService.launcher.running }, 9000, "a launch without a window ends",
+             function() { return JSON.stringify([two.launchingId, two.opened, Plugin.TeamsService.launcher.running, two.launchError]) })
     },
     function() {
       if (!check(two.launchError === two.tr("No matching window appeared. Check the account application ID or sign in to Teams.") && !one.opened, "the timed-out launch shows its error on its own bar: " + JSON.stringify([two.launchError, one.opened]))) return
@@ -517,10 +524,12 @@ ShellRoot {
       page.saveAccount()
       if (!check(shell.calls.length === 2 && JSON.stringify(shell.savedIds()) === JSON.stringify(["work", added.id]) && shell.calls[1].settings.accounts[0].name === "Work 2" && !page.editing, "Edit saves the changed account in place: " + JSON.stringify(shell.calls[shell.calls.length - 1]))) return
       shell.reflect(one)
-      // Another monitor saved the list while the editor was open: no lost update.
+      // Another monitor renamed the account being edited while the editor
+      // was open: saving the changed draft would overwrite that rename.
       page.edit(one.definitions[0])
+      page.change("name", "Work 3")
       var elsewhere = JSON.parse(JSON.stringify(one.settings))
-      elsewhere.accounts[1].name = "Home elsewhere"
+      elsewhere.accounts[0].name = "Work elsewhere"
       one.settings = elsewhere
       page.saveAccount()
       if (!check(page.error === one.tr("Settings changed elsewhere. Reopen the account editor.") && shell.calls.length === 2, "a save over a list changed elsewhere is refused: " + JSON.stringify([page.error, shell.calls.length]))) return
@@ -660,17 +669,27 @@ ShellRoot {
     for (var i = 0; i < kids.length; i++) { var hit = findText(kids[i], text); if (hit) return hit }
     return null
   }
-  FileView { id: logView; blockLoading: true; printErrors: false }
+  function cliLog() {
+    cliView.reload()
+    var text = cliView.text().trim()
+    return text ? text.split("\n") : []
+  }
+  // The `omarchy` calls of the current scenario.
+  property int cliBase: 0
+  FileView { id: cliView; path: Quickshell.env("FOAMY_CLI_LOG"); blockLoading: true; printErrors: false }
+  FileView { id: cliFail; path: Quickshell.env("FOAMY_CLI_FAIL"); blockWrites: true; printErrors: false }
 }
 """
 
-# The `omarchy` stub: logs its arguments; the first call fails (a failed
-# `omarchy bar set`), later calls succeed.
+# The `omarchy` stub: logs its arguments and succeeds, unless a scenario
+# wrote the marker file: then this one call fails (a failed `omarchy bar
+# set`) and the marker is removed, so a retry succeeds.
 OMARCHY_STUB = """#!/bin/sh
-before=0
-[ -f "$FOAMY_CLI_LOG" ] && before=$(wc -l < "$FOAMY_CLI_LOG")
 echo "$*" >> "$FOAMY_CLI_LOG"
-[ "$before" -gt 0 ]
+if [ -f "$FOAMY_CLI_FAIL" ]; then
+  rm -f "$FOAMY_CLI_FAIL"
+  exit 1
+fi
 """
 
 
@@ -683,6 +702,7 @@ def run():
     (stub / "omarchy").chmod(0o755)
     r.env["PATH"] = f"{stub}:{r.env['PATH']}"
     r.env["FOAMY_CLI_LOG"] = str(log)
+    r.env["FOAMY_CLI_FAIL"] = str(r.base / "cli-fail")
     # The launch tests' client: records its arguments, never a real Teams.
     (stub / "foamy-teams-fake-client").write_text('#!/bin/sh\necho "$*" >> "$FOAMY_CLIENT_LOG"\n')
     (stub / "foamy-teams-fake-client").chmod(0o755)
@@ -693,14 +713,19 @@ def run():
     # One IPC handler per shell: when every bar enables its handler, Quickshell
     # uses one of them and warns about the others, so `qs ipc` still works and
     # only this warning shows the second leader.
-    ipc_conflict = "another handler is registered for target foamy.teams" in r.log
-    ok = r.ok and not host and not ipc_conflict
+    conflict = "another handler is registered for target "
+    ipc_control = conflict + "foamy-teams-probe" in r.log
+    ipc_conflict = conflict + "foamy.teams" in r.log
+    ok = r.ok and not host and ipc_control and not ipc_conflict
     if host:
         print("  host commands:", host)
+    if not ipc_control:
+        print("  the IPC conflict warning was not seen; the leader check cannot work")
     if ipc_conflict:
         print("  more than one bar enabled the foamy.teams IPC handler")
+    expected = ("wl_display", "window masks", "foamy-teams-probe")
     for line in r.log.splitlines():
-        if ("WARN" in line or "rror" in line) and "wl_display" not in line and "window masks" not in line:
+        if ("WARN" in line or "rror" in line) and not any(text in line for text in expected):
             print("  log:", line.strip())
     if not ok:
         print(r.log)
