@@ -1,9 +1,9 @@
 """Load the real Panel.qml twice (two monitors) in an isolated offscreen shell
 on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
-lazy popup body, the Settings page, saves (inline and a failed `omarchy bar
-set` with Retry), the closed modes, a row click, launches (failed and
-refused), the window tracker, an invalid stored account list and the bar
-count.
+lazy popup body, the Settings page and its account editor, saves (inline and a
+failed `omarchy bar set` with Retry), the closed modes, the status heading,
+clicks and keys, launches (failed, refused, timed out), the window tracker,
+the bar count and plain-text rendering of page-controlled text.
 
   python3 tests/runtime.py
 
@@ -287,9 +287,47 @@ ShellRoot {
       next()
     },
 
-    // --- focus: a row click focuses a running account ---------------------
+    // --- status: the heading, the tooltip and the empty states ------------
     function() {
-      if (!reset("focus", { accounts: [shell.work, shell.home] })) return
+      if (!reset("status", { accounts: [] })) return
+      one.open()
+      expect(function() { return one.opened && one.popup.bodyItem !== null }, 5000, "the popup opens")
+    },
+    function() {
+      var off = shell.account(shell.work, { enabled: false })
+      var rows = [
+        [{ accounts: [] }, [], "No accounts configured"],
+        [{ accounts: [off] }, [], "All accounts are disabled"],
+        [{ accounts: [shell.work] }, [], "Teams is not running"],
+        [{ accounts: [shell.work] }, [shell.teamsWindow("teams-work", "(3) Chat | Microsoft Teams")], "3 unread messages"],
+        [{ accounts: [shell.work] }, [shell.teamsWindow("teams-work", "(1) Chat | Microsoft Teams")], "1 unread message"],
+        [{ accounts: [shell.work] }, [shell.teamsWindow("teams-work", "Chat | Microsoft Teams")], "All read"],
+        [{ accounts: [shell.work] }, [shell.teamsWindow("teams-work", "Sign in | Microsoft Teams")], "Microsoft Teams"],
+        [{ accounts: [shell.work, shell.home] }, [shell.teamsWindow("teams-work", "Chat | Microsoft Teams")], "All read"]
+      ]
+      for (var row of rows) {
+        one.settings = row[0]
+        Plugin.TeamsService.windows = row[1]
+        if (!check(one.heading === row[2], "heading for " + JSON.stringify([row[0].accounts.map(function(a) { return a.id + (a.enabled ? "" : " off") }), row[1].map(function(w) { return w.title })]) + ": " + one.heading)) return
+      }
+      var tooltip = shell.find(one, "teamsButton").tooltipText
+      if (!check(tooltip === "Microsoft Teams · All read", "the bar tooltip carries the heading: " + tooltip)) return
+      var body = one.popup.bodyItem
+      one.settings = { accounts: [] }
+      Plugin.TeamsService.windows = []
+      if (!check(shell.findText(body, "Add your Teams accounts in Settings") !== null, "no accounts: the popup points at Settings")) return
+      one.settings = { accounts: [off] }
+      Plugin.TeamsService.windows = []
+      if (!check(shell.findText(body, "Enable an account in Settings") !== null, "all disabled: the popup says how to enable one")) return
+      one.settings = { accounts: [shell.work], showClosed: false }
+      Plugin.TeamsService.windows = []
+      if (!check(shell.findText(body, "No visible accounts\nShow closed accounts in Settings") !== null, "closed rows hidden: the popup says why it is empty")) return
+      next()
+    },
+
+    // --- focus, clicks and keys -------------------------------------------
+    function() {
+      if (!reset("focus, clicks and keys", { accounts: [shell.work, shell.home], defaultAccount: "home" })) return
       Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "Chat | Microsoft Teams", fakeWindow), shell.teamsWindow("teams-home", "Chat | Microsoft Teams", fakeHome)]
       one.open()
       expect(function() { return one.opened && one.accounts[0].running && shell.find(one.popup.bodyItem, "account:work") !== null }, 5000, "the popup opens on a running account")
@@ -298,8 +336,37 @@ ShellRoot {
       // A click on a running account's row focuses its window; nothing launches.
       shell.find(one.popup.bodyItem, "account:work").clicked()
       if (!check(fakeWindow.activations === 1 && fakeHome.activations === 0 && !one.opened && one.launchingId === "" && one.launchError === "", "a row click activates the window and closes the popup: " + JSON.stringify([fakeWindow.activations, fakeHome.activations, one.opened, one.launchingId]))) return
+      shell.find(one, "teamsButton").triggerPress(Qt.MiddleButton)
+      if (!check(fakeHome.activations === 1 && fakeWindow.activations === 1 && !one.opened, "middle-click focuses the default account and opens no popup: " + JSON.stringify([fakeWindow.activations, fakeHome.activations, one.opened]))) return
+      shell.find(one, "teamsButton").triggerPress(Qt.RightButton)
+      expect(function() { return one.opened && one.editingSettings }, 5000, "right-click opens Settings")
+    },
+    function() {
+      one.closeSettings(); one.close()
+      one.open()
+      expect(function() { return one.opened && one.popup.bodyItem !== null }, 5000, "the popup opens again")
+    },
+    function() {
+      var view = one.popup.bodyItem
+      view.moveRequested(0, 1)
+      view.moveRequested(0, 1)
+      view.activateRequested()
+      if (!check(fakeHome.activations === 2 && fakeWindow.activations === 1 && !one.opened, "the keys move to the second account and focus it: " + JSON.stringify([fakeWindow.activations, fakeHome.activations, one.opened]))) return
+      one.open()
+      expect(function() { return one.opened }, 5000, "the popup opens for the shortcut keys")
+    },
+    function() {
+      var view = one.popup.bodyItem
+      view.textKey("s", Qt.ControlModifier)
+      if (!check(!one.editingSettings, "Ctrl+S is not the Settings shortcut")) return
+      view.textKey("s", Qt.NoModifier)
+      if (!check(one.editingSettings, "S opens Settings")) return
+      one.closeSettings()
+      view.closeRequested()
+      if (!check(!one.opened, "Escape on the account list closes the popup")) return
       next()
     },
+
     // --- launch: failure, refused launches, the window ends it ------------
     function() {
       // A launcher that cannot start the client reports it (exit 127), never success.
@@ -350,6 +417,24 @@ ShellRoot {
       expect(function() { return one.launchingId === "" && two.launchingId === "" }, 5000, "the second launch ends when its window appears")
     },
 
+    // --- launch timeout: no window ever appears ---------------------------
+    function() {
+      if (!reset("launch timeout", { accounts: [shell.account(shell.work, { command: ["foamy-teams-fake-client", "work"] })] })) return
+      Plugin.TeamsService.launchTimeout.interval = 200
+      two.openAccount(two.accounts[0])
+      if (!check(two.launchingId === "work", "launch starts, got " + two.launchingId)) return
+      expect(function() { return two.launchingId === "" && two.opened && !Plugin.TeamsService.launcher.running }, 9000, "a launch without a window ends")
+    },
+    function() {
+      if (!check(two.launchError === two.tr("No matching window appeared. Check the account application ID or sign in to Teams.") && !one.opened, "the timed-out launch shows its error on its own bar: " + JSON.stringify([two.launchError, one.opened]))) return
+      Plugin.TeamsService.launchTimeout.interval = 15000
+      two.openAccount(two.accounts[0])
+      if (!check(two.launchingId === "work" && two.launchError === "", "the launch can start again: " + JSON.stringify([two.launchingId, two.launchError]))) return
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "Chat | Microsoft Teams")]
+      expect(function() { return one.launchingId === "" && two.launchingId === "" && two.launchError === "" && JSON.stringify(shell.clientRuns()) === '["work","work"]' }, 5000, "the second launch ends when its window appears",
+             function() { return JSON.stringify([one.launchingId, two.launchingId, two.launchError, shell.clientRuns()]) })
+    },
+
     // --- tracker: a title that keeps changing -----------------------------
     function() {
       if (!reset("tracker", { accounts: shell.accounts })) return
@@ -397,6 +482,59 @@ ShellRoot {
       expect(function() { return add.enabled && page.error === "" }, 5000, "a fixed account list unblocks Add", function() { return add.enabled + " " + JSON.stringify(page.error) })
     },
 
+    // --- account editor: add, edit, move and remove through the view ------
+    function() {
+      if (!reset("account editor", { accounts: shell.accounts })) return
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "addAccount") !== null }, 5000, "Settings opens")
+    },
+    function() {
+      var page = shell.page()
+      shell.find(one.popup.bodyItem, "addAccount").clicked()
+      if (!check(page.editing && page.adding, "Add opens the editor on a new account")) return
+      page.change("name", "Home")
+      page.change("appId", "teams-home")
+      page.saveAccount()
+      if (!check(shell.calls.length === 1, "Save writes the list once: " + JSON.stringify(shell.calls) + " " + page.error)) return
+      var saved = shell.calls[0].settings.accounts, added = saved[1]
+      if (!check(saved.length === 2 && saved[0].id === "work" && added && added.name === "Home" && added.appId === "teams-home" && added.enabled === true && added.browser === "omarchy-launch-webapp" && added.profile === "" && added.url === "https://teams.microsoft.com" && JSON.stringify(added.command) === "[]" && /^account-\d+$/.test(added.id), "the new account is saved after the others with the defaults: " + JSON.stringify(saved))) return
+      if (!check(!page.editing && page.error === "", "the editor closes after the save")) return
+      shell.reflect(one)
+      // An invalid draft is refused with its message, and nothing is written.
+      page.edit(one.definitions[0])
+      page.change("url", "http://x")
+      page.saveAccount()
+      if (!check(page.error === one.tr("Enter an HTTPS Teams URL.") && page.editing && shell.calls.length === 1, "an http URL is refused: " + JSON.stringify([page.error, page.editing, shell.calls.length]))) return
+      page.change("url", "https://teams.microsoft.com")
+      page.commandDraft = "not json"
+      page.saveAccount()
+      if (!check(page.error === one.tr("Enter a JSON array of command arguments, or [].") && shell.calls.length === 1, "launch arguments that are not JSON are refused: " + page.error)) return
+      page.leaveEditor()
+      // Edit keeps the ids and their order.
+      page.edit(one.definitions[0])
+      page.change("name", "Work 2")
+      page.saveAccount()
+      if (!check(shell.calls.length === 2 && JSON.stringify(shell.savedIds()) === JSON.stringify(["work", added.id]) && shell.calls[1].settings.accounts[0].name === "Work 2" && !page.editing, "Edit saves the changed account in place: " + JSON.stringify(shell.calls[shell.calls.length - 1]))) return
+      shell.reflect(one)
+      // Another monitor saved the list while the editor was open: no lost update.
+      page.edit(one.definitions[0])
+      var elsewhere = JSON.parse(JSON.stringify(one.settings))
+      elsewhere.accounts[1].name = "Home elsewhere"
+      one.settings = elsewhere
+      page.saveAccount()
+      if (!check(page.error === one.tr("Settings changed elsewhere. Reopen the account editor.") && shell.calls.length === 2, "a save over a list changed elsewhere is refused: " + JSON.stringify([page.error, shell.calls.length]))) return
+      page.leaveEditor()
+      // Move and remove.
+      page.move(0, 1)
+      if (!check(shell.calls.length === 3 && JSON.stringify(shell.savedIds()) === JSON.stringify([added.id, "work"]), "Move down writes the other order: " + JSON.stringify(shell.savedIds()))) return
+      shell.reflect(one)
+      page.edit(one.definitions[1])
+      page.remove("work")
+      if (!check(shell.calls.length === 4 && JSON.stringify(shell.savedIds()) === JSON.stringify([added.id]) && !page.editing, "Remove writes the list without the account and closes the editor: " + JSON.stringify([shell.savedIds(), page.editing]))) return
+      next()
+    },
+
     // --- bar count --------------------------------------------------------
     function() {
       if (!reset("bar count", { accounts: [shell.work, shell.home], showCount: true })) return
@@ -405,6 +543,20 @@ ShellRoot {
       Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "(2147483647) Chat | Microsoft Teams"), shell.teamsWindow("teams-home", "(1) Chat | Microsoft Teams")]
       var content = shell.find(one, "teamsBarContent")
       expect(function() { return content.unread === 2147483648 && shell.find(one, "unreadCount").visible }, 5000, "the bar shows an unread total above 2^31", function() { return content.unread })
+    },
+    function() {
+      var count = shell.find(one, "unreadCount"), other = shell.find(two, "unreadCount")
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "Chat | Microsoft Teams")]
+      if (!check(!count.visible, "no count at a total of 0")) return
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "(4) Chat | Microsoft Teams")]
+      if (!check(count.visible && other.visible, "the count shows on both bars")) return
+      two.savePreference("showCount", false)
+      if (!check(!other.visible && count.visible, "turning the count off hides it on that bar only")) return
+      bar.position = "left"
+      if (!check(!count.visible, "a vertical bar shows no count")) return
+      bar.position = "top"
+      if (!check(count.visible, "the count shows again on a horizontal bar")) return
+      next()
     },
 
     // --- rendering: whole characters and plain text -----------------------
@@ -419,6 +571,18 @@ ShellRoot {
     function() {
       var initial = shell.find(one.popup.bodyItem, "accountInitial").text
       if (!check(initial === "\u{1F600}", "the initial is the whole emoji: " + JSON.stringify(initial))) return
+      one.closeSettings()
+      // A web page sets the window title, and the user the account name:
+      // neither may render as markup.
+      one.settings = { accounts: [shell.account(shell.work, { name: "<i>Work</i>" }), shell.home], showContext: true }
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", '(2) <b>Bold</b> <img src="x"> | Microsoft Teams')]
+      expect(function() { return !one.editingSettings && shell.findText(one.popup.bodyItem, '<b>Bold</b> <img src="x">') !== null }, 5000, "the popup shows the window context")
+    },
+    function() {
+      var body = one.popup.bodyItem
+      var context = shell.findText(body, '<b>Bold</b> <img src="x">'), name = shell.findText(body, "<i>Work</i>")
+      if (!check(context.textFormat === Text.PlainText && name && name.textFormat === Text.PlainText, "page-controlled text is plain text: " + JSON.stringify([context.textFormat, name && name.textFormat]))) return
+      if (!check(shell.findText(body, one.tr("Not running")) !== null, "a closed account says it is not running")) return
       next()
     },
 
