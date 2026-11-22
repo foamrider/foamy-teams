@@ -31,11 +31,15 @@ FoamySettingsPage {
   signal backToPanel
 
   title: FoamyI18n.t(editing ? (adding ? "New account" : "Edit account") : "Settings")
-  // A failed paste in an editor field (the kit's English message). The field
-  // clears it when its text changes or it hides, so it never outlives the edit.
-  readonly property string pasteError: nameField.pasteError || appIdField.pasteError || browserField.pasteError || profileField.pasteError || urlField.pasteError || commandField.pasteError
-  // The failed paste first (the latest action), then local validation, then
-  // the panel's save error.
+  // The editor's text fields. A failed paste sets one's pasteError (the kit's
+  // English message); the field clears it when its text changes, a new paste
+  // starts or it hides, and a save from the editor clears it.
+  readonly property var textFields: [nameField, appIdField, browserField, profileField, urlField, commandField]
+  readonly property string pasteError: textFields.reduce(function (error, field) {
+    return error || field.pasteError
+  }, "")
+  // A failed paste first: it is newer than the last save, which clears it.
+  // Then local validation, then the panel's save error.
   property string panelError: ""
   error: pasteError ? tr(pasteError) : localError || panelError
   onBack: {
@@ -85,9 +89,16 @@ FoamySettingsPage {
     next[key] = value
     draft = next
   }
+  // A save is the user's next action after a failed paste: its own error
+  // must show, and the older paste error would hide it.
+  function clearPasteErrors() {
+    for (const field of textFields)
+      field.pasteError = ""
+  }
   function saveAccount() {
     if (accountsLocked)
       return
+    clearPasteErrors()
     if (accountsBaseline !== JSON.stringify(definitions)) {
       localError = tr("Settings changed elsewhere. Reopen the account editor.")
       return
@@ -119,10 +130,12 @@ FoamySettingsPage {
       leaveEditor()
   }
   function remove(id) {
-    if (!accountsLocked)
-      root.save("accounts", definitions.filter(function (a) {
-        return a.id !== id
-      }))
+    if (accountsLocked)
+      return
+    clearPasteErrors()
+    root.save("accounts", definitions.filter(function (a) {
+      return a.id !== id
+    }))
   }
   function move(index, delta) {
     if (accountsLocked)

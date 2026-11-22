@@ -2,13 +2,13 @@
 on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
 lazy popup body, the Settings page and its account editor, the keys after the
 editor closes on a focused field, saves (inline and a failed `omarchy bar set`
-with Retry), a failed paste in the editor (shown in Norwegian), the closed
-modes, the status heading, clicks and keys, launches (failed, refused, timed
-out), the window tracker (a title that keeps changing; only the windows of
-configured accounts are read, from a test model of windows), the bar count,
-the account order at equal counts, plain-text rendering of page-controlled
-text and preview/Preview.qml's editor state, walked as the kit's render
-harness does.
+with Retry), a failed paste in the editor and the error of a Save or Remove
+after it (in Norwegian), the closed modes, the status heading, clicks and
+keys, launches (failed, refused, timed out), the window tracker (a title that
+keeps changing; only the windows of configured accounts are read, from a test
+model of windows), the bar count, the account order at equal counts,
+plain-text rendering of page-controlled text and preview/Preview.qml's editor
+state, walked as the kit's render harness does.
 
   python3 tests/runtime.py
 
@@ -16,9 +16,9 @@ Runs on the installed /usr/share/omarchy/shell, or the tree in FOAMY_HOST_45.
 
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
-`omarchy` CLI is a stub that logs its arguments and fails one call when a
-scenario asks for it; the Teams client is a stub that logs its arguments; a
-paste reads the kit's wl-paste stand-in (hostenv.clipboard_fakes).
+`omarchy` and `omarchy-shell` CLIs are stubs that log their arguments and fail
+one call when a scenario asks for it; the Teams client is a stub that logs its
+arguments; a paste reads the kit's wl-paste stand-in (hostenv.clipboard_fakes).
 """
 
 import os
@@ -250,7 +250,7 @@ ShellRoot {
     function() {
       shell.inline = false
       // The stub fails the next CLI call, then removes the marker.
-      cliFail.setText("1\n")
+      shell.failNextCli()
       one.savePreference("showCount", false)
       if (!check(one.saving, "the save runs through the CLI")) return
       expect(function() { return !one.saving }, 18000, "the failed CLI save ends")
@@ -669,6 +669,60 @@ ShellRoot {
       fields[2].pasteError = messages[0]
       page.leaveEditor()
       if (!check(page.error === "", "the closed editor leaves no paste error: " + JSON.stringify(page.error))) return
+      // A new account with a name and no application ID.
+      shell.find(one.popup.bodyItem, "addAccount").clicked()
+      expect(function() { return page.adding && shell.editorFields(page)[0].inputActiveFocus }, 5000, "Add opens the editor with the keys in the name field")
+    },
+    function() {
+      var page = shell.page(), appId = shell.editorFields(page)[1]
+      for (var c of "Home") ev.keyClickChar(c, Qt.NoModifier, -1)
+      // A paste into the application ID field fails (wl-paste fails).
+      appId.focusInput()
+      clipboardMode.setText("failure")
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      expect(function() { return page.error === Kit.FoamyI18n.t("Could not paste clipboard text. Copy plain text and try again.") }, 10000, "a failed paste in the application ID field shows why",
+             function() { return JSON.stringify([page.error, page.draft.name, appId.pasteError]) })
+    },
+    function() {
+      var page = shell.page(), saves = shell.calls.length
+      // Save without touching the field: the save's own error shows, not
+      // the older paste error.
+      page.saveAccount()
+      if (!check(page.editing && shell.calls.length === saves && page.error === Kit.FoamyI18n.t("Choose a window or enter its application ID."), "Save after a failed paste shows why the save failed: " + JSON.stringify(page.error))) return
+      // A paste that fails after the save shows again: the newest message wins.
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      expect(function() { return page.error === Kit.FoamyI18n.t("Could not paste clipboard text. Copy plain text and try again.") }, 10000, "a paste that fails after the save shows why", function() { return JSON.stringify(page.error) })
+    },
+    function() {
+      var page = shell.page()
+      page.leaveEditor()
+      page.edit(one.definitions[0])
+      expect(function() { return !page.adding && shell.editorFields(page)[0].inputActiveFocus }, 5000, "the editor opens on the account with the keys in the name field")
+    },
+    function() {
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      var page = shell.page()
+      expect(function() { return page.error === Kit.FoamyI18n.t("Could not paste clipboard text. Copy plain text and try again.") }, 10000, "a failed paste in the name field shows why", function() { return JSON.stringify(page.error) })
+    },
+    function() {
+      // Remove, and its save fails (the CLI fails once): the failed save
+      // shows with Retry, not the older paste error.
+      shell.inline = false
+      shell.failNextCli()
+      var page = shell.page()
+      page.remove(page.draft.id)
+      expect(function() { return !one.saving }, 18000, "the failed CLI save ends")
+    },
+    function() {
+      var page = shell.page()
+      if (!check(page.error === Kit.FoamyI18n.t("Couldn't save the setting.") && page.retryable === true, "Remove after a failed paste shows the failed save with Retry: " + JSON.stringify([page.error, page.retryable]))) return
+      // Retry removes the account and closes the editor.
+      page.retry()
+      expect(function() { return !one.saving && page.error === "" && !page.editing }, 18000, "Retry saves the removal", function() { return JSON.stringify([one.saving, page.error, page.editing]) })
+    },
+    function() {
+      shell.inline = true
+      clipboardMode.setText("normal")
       language.setText("en\n")
       expect(function() { return Kit.FoamyI18n.language === "en" }, 5000, "the run goes on in English")
     },
@@ -876,19 +930,26 @@ ShellRoot {
     var text = cliView.text().trim()
     return text ? text.split("\n") : []
   }
-  // The `omarchy` calls of the current scenario.
+  // The `omarchy` and `omarchy-shell` calls of the current scenario.
   property int cliBase: 0
   FileView { id: cliView; path: Quickshell.env("FOAMY_CLI_LOG"); blockLoading: true; printErrors: false }
   FileView { id: cliFail; path: Quickshell.env("FOAMY_CLI_FAIL"); blockWrites: true; printErrors: false }
+  // Fails the next `omarchy` or `omarchy-shell` call. A FileView skips a
+  // write of the text it holds, and the stub deletes the marker, so each
+  // marker gets a new text.
+  property int cliFailures: 0
+  function failNextCli() { cliFail.setText(String(++cliFailures) + "\n") }
   // What the next paste reads (the kit's wl-paste stand-in), and Omarchy's language.
   FileView { id: clipboardMode; path: Quickshell.env("TEST_CLIPBOARD_STATE"); blockWrites: true; printErrors: false }
   FileView { id: language; path: Quickshell.env("OMARCHY_LANGUAGE_FILE"); blockWrites: true; printErrors: false }
 }
 """
 
-# The `omarchy` stub: logs its arguments and succeeds, unless a scenario
-# wrote the marker file: then this one call fails (a failed `omarchy bar
-# set`) and the marker is removed, so a retry succeeds.
+# The `omarchy` and `omarchy-shell` stubs: log their arguments and succeed
+# (`omarchy-shell` answers "ok", as the shell's setBarWidget does; a list
+# such as the accounts is saved that way), unless a scenario wrote the
+# marker file: then this one call fails (a failed `omarchy bar set` or
+# setBarWidget) and the marker is removed, so a retry succeeds.
 OMARCHY_STUB = """#!/bin/sh
 echo "$*" >> "$FOAMY_CLI_LOG"
 if [ -f "$FOAMY_CLI_FAIL" ]; then
@@ -905,6 +966,8 @@ def run():
     log = r.base / "cli.log"
     (stub / "omarchy").write_text(OMARCHY_STUB)
     (stub / "omarchy").chmod(0o755)
+    (stub / "omarchy-shell").write_text(OMARCHY_STUB + "echo ok\n")
+    (stub / "omarchy-shell").chmod(0o755)
     r.env["PATH"] = f"{stub}:{r.env['PATH']}"
     r.env["FOAMY_CLI_LOG"] = str(log)
     r.env["FOAMY_CLI_FAIL"] = str(r.base / "cli-fail")
