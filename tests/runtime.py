@@ -3,12 +3,13 @@ on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
 lazy popup body, the Settings page and its account editor, the keys after the
 editor closes on a focused field, saves (inline and a failed `omarchy bar set`
 with Retry), a failed paste in the editor and the error of a Save or Remove
-after it (in Norwegian), the closed modes, the status heading, clicks and
-keys, launches (failed, refused, timed out), the window tracker (a title that
-keeps changing; only the windows of configured accounts are read, from a test
-model of windows), the bar count, the account order at equal counts,
-plain-text rendering of page-controlled text and preview/Preview.qml's editor
-state, walked as the kit's render harness does.
+after it, with Retry only beside a failed save (in Norwegian), the closed
+modes, the status heading, clicks and keys, launches (failed, refused, timed
+out), the window tracker (a title that keeps changing; only the windows of
+configured accounts are read, from a test model of windows), the bar count,
+the account order at equal counts, plain-text rendering of page-controlled
+text and preview/Preview.qml's editor state, walked as the kit's render
+harness does.
 
   python3 tests/runtime.py
 
@@ -714,8 +715,25 @@ ShellRoot {
       expect(function() { return !one.saving }, 18000, "the failed CLI save ends")
     },
     function() {
-      var page = shell.page()
+      var page = shell.page(), name = shell.editorFields(page)[0]
       if (!check(page.error === Kit.FoamyI18n.t("Couldn't save the setting.") && page.retryable === true, "Remove after a failed paste shows the failed save with Retry: " + JSON.stringify([page.error, page.retryable]))) return
+      // A paste that fails now replaces the message. Retry would run the
+      // failed removal again, so it must not show beside the paste error.
+      name.focusInput()
+      if (!check(name.inputActiveFocus, "the name field takes the keys again")) return
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      expect(function() { return page.error === Kit.FoamyI18n.t("Could not paste clipboard text. Copy plain text and try again.") }, 10000, "a failed paste after the failed removal shows why", function() { return JSON.stringify(page.error) })
+    },
+    function() {
+      var page = shell.page()
+      if (!check(!page.retryable, "no Retry beside the paste error: it would run the failed removal again")) return
+      // Typing clears the paste error: the failed save and its Retry show again.
+      ev.keyClickChar("x", Qt.NoModifier, -1)
+      if (!check(page.error === Kit.FoamyI18n.t("Couldn't save the setting.") && page.retryable === true, "the failed save and its Retry show again: " + JSON.stringify([page.error, page.retryable]))) return
+      // The same for a Save the page refuses: its own error shows, with no Retry.
+      page.change("name", "")
+      page.saveAccount()
+      if (!check(page.error === Kit.FoamyI18n.t("Enter an account name.") && !page.retryable, "no Retry beside the refused Save's error: " + JSON.stringify([page.error, page.retryable]))) return
       // Retry removes the account and closes the editor.
       page.retry()
       expect(function() { return !one.saving && page.error === "" && !page.editing }, 18000, "Retry saves the removal", function() { return JSON.stringify([one.saving, page.error, page.editing]) })
