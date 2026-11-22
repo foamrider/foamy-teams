@@ -31,9 +31,13 @@ FoamySettingsPage {
   signal backToPanel
 
   title: FoamyI18n.t(editing ? (adding ? "New account" : "Edit account") : "Settings")
-  // Local validation first, then the panel's save error.
+  // A failed paste in an editor field (the kit's English message). The field
+  // clears it when its text changes or it hides, so it never outlives the edit.
+  readonly property string pasteError: nameField.pasteError || appIdField.pasteError || browserField.pasteError || profileField.pasteError || urlField.pasteError || commandField.pasteError
+  // The failed paste first (the latest action), then local validation, then
+  // the panel's save error.
   property string panelError: ""
-  error: localError || panelError
+  error: pasteError ? tr(pasteError) : localError || panelError
   onBack: {
     if (editing)
       leaveEditor()
@@ -364,6 +368,7 @@ FoamySettingsPage {
       text: root.tr("Application ID")
     }
     SafeTextField {
+      id: appIdField
       width: parent.width
       text: root.draft.appId || ""
       translate: FoamyI18n.t
@@ -389,6 +394,7 @@ FoamySettingsPage {
       text: root.tr("Browser executable")
     }
     SafeTextField {
+      id: browserField
       width: parent.width
       text: root.draft.browser || ""
       translate: FoamyI18n.t
@@ -399,6 +405,7 @@ FoamySettingsPage {
       text: root.tr("Browser profile")
     }
     SafeTextField {
+      id: profileField
       width: parent.width
       text: root.draft.profile || ""
       translate: FoamyI18n.t
@@ -409,6 +416,7 @@ FoamySettingsPage {
       text: root.tr("Teams URL")
     }
     SafeTextField {
+      id: urlField
       width: parent.width
       text: root.draft.url || ""
       translate: FoamyI18n.t
@@ -419,6 +427,7 @@ FoamySettingsPage {
       text: root.tr("Advanced launch arguments (JSON array)")
     }
     SafeTextField {
+      id: commandField
       width: parent.width
       text: root.commandDraft
       translate: FoamyI18n.t

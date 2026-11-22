@@ -1,10 +1,10 @@
 """Load the real Panel.qml twice (two monitors) in an isolated offscreen shell
 on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
 lazy popup body, the Settings page and its account editor, saves (inline and a
-failed `omarchy bar set` with Retry), the closed modes, the status heading,
-clicks and keys, launches (failed, refused, timed out), the window tracker,
-the bar count, the account order at equal counts and plain-text rendering of
-page-controlled text.
+failed `omarchy bar set` with Retry), a failed paste in the editor (shown in
+Norwegian), the closed modes, the status heading, clicks and keys, launches
+(failed, refused, timed out), the window tracker, the bar count, the account
+order at equal counts and plain-text rendering of page-controlled text.
 
   python3 tests/runtime.py
 
@@ -13,7 +13,8 @@ Runs on the installed /usr/share/omarchy/shell, or the tree in FOAMY_HOST_45.
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
 `omarchy` CLI is a stub that logs its arguments and fails one call when a
-scenario asks for it; the Teams client is a stub that logs its arguments.
+scenario asks for it; the Teams client is a stub that logs its arguments; a
+paste reads the kit's wl-paste stand-in (hostenv.clipboard_fakes).
 """
 
 import os
@@ -28,6 +29,7 @@ sys.path.insert(0, str(kit / "preview"))
 import harness  # noqa: E402
 
 SHELL = r"""import QtQuick
+import QtTest
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -92,6 +94,8 @@ ShellRoot {
   }
 
   FoamyWait { id: wait }
+  // Keys as a user types them, to the window that has the keys.
+  TestEvent { id: ev }
 
   // Each step acts, then waits for the state it expects instead of a fixed
   // tick, so a loaded machine only makes the run slower, never wrong.
@@ -563,6 +567,53 @@ ShellRoot {
       next()
     },
 
+    // --- paste errors: a failed paste says why, in the page's language ----
+    function() {
+      if (!reset("paste errors", { accounts: shell.accounts })) return
+      language.setText("no\n")
+      one.open()
+      one.openSettings()
+      expect(function() { return Kit.FoamyI18n.language === "no" && one.editingSettings && shell.page() !== null }, 5000, "Settings opens in Norwegian")
+    },
+    function() {
+      shell.page().edit(one.definitions[0])
+      expect(function() { var name = shell.editorFields(shell.page())[0]; return name && name.text === "Work" && name.inputActiveFocus }, 5000, "the editor opens with the keys in the name field")
+    },
+    function() {
+      // Ctrl+V with a clipboard text over the kit's 16 KiB limit (the kit's
+      // wl-paste stand-in): the paste fails and the page says why.
+      clipboardMode.setText("large")
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      var name = shell.editorFields(shell.page())[0]
+      expect(function() { return shell.page().error === Kit.FoamyI18n.t("Clipboard text is too large or contains invalid characters.") }, 10000, "a paste over the limit shows why on the page",
+             function() { return JSON.stringify([shell.page().error, name.pasteError, name.text]) })
+    },
+    function() {
+      clipboardMode.setText("normal")
+      var page = shell.page(), fields = shell.editorFields(page)
+      if (!check(fields.length === 6 && fields[0].text === "Work" && page.draft.name === "Work", "the failed paste leaves the name as it was: " + JSON.stringify([fields.length, fields[0].text, page.draft.name]))) return
+      // The next edit clears the message, as it clears the field's paste error.
+      ev.keyClickChar("x", Qt.NoModifier, -1)
+      if (!check(page.draft.name.length === 5 && page.error === "", "typing clears the paste error: " + JSON.stringify([page.draft.name, page.error]))) return
+      // Each field's paste error, set as the kit sets it after a failed
+      // paste, shows on the page in Norwegian.
+      var messages = ["Clipboard paste timed out. Copy the text again.", "Clipboard text is too large or contains invalid characters.", "Could not paste clipboard text. Copy plain text and try again."]
+      for (var i = 0; i < fields.length; i++) {
+        for (var english of messages) {
+          var shown = Kit.FoamyI18n.t(english)
+          fields[i].pasteError = english
+          if (!check(shown !== english && page.error === shown, "text field " + i + ": the paste error shows in Norwegian, got " + JSON.stringify(page.error) + " for " + JSON.stringify(english))) return
+          fields[i].pasteError = ""
+        }
+      }
+      // A paste error goes with the editor: the account list shows none.
+      fields[2].pasteError = messages[0]
+      page.leaveEditor()
+      if (!check(page.error === "", "the closed editor leaves no paste error: " + JSON.stringify(page.error))) return
+      language.setText("en\n")
+      expect(function() { return Kit.FoamyI18n.language === "en" }, 5000, "the run goes on in English")
+    },
+
     // --- bar count --------------------------------------------------------
     function() {
       if (!reset("bar count", { accounts: [shell.work, shell.home], showCount: true })) return
@@ -700,6 +751,19 @@ ShellRoot {
     for (var i = 0; i < kids.length; i++) { var hit = find(kids[i], name); if (hit) return hit }
     return null
   }
+  // The account editor's text fields (kit SafeTextFields) in page order:
+  // name, application ID, browser, profile, URL, launch arguments.
+  function editorFields(page) {
+    var found = []
+    function walk(item) {
+      if (!item) return
+      if (item.pasteError !== undefined && item.editorItem !== undefined) { found.push(item); return }
+      var kids = item.children || []
+      for (var i = 0; i < kids.length; i++) walk(kids[i])
+    }
+    walk(page)
+    return found
+  }
   // The first visible item whose text is exactly `text`.
   function findText(item, text) {
     if (!item || !item.visible) return null
@@ -717,6 +781,9 @@ ShellRoot {
   property int cliBase: 0
   FileView { id: cliView; path: Quickshell.env("FOAMY_CLI_LOG"); blockLoading: true; printErrors: false }
   FileView { id: cliFail; path: Quickshell.env("FOAMY_CLI_FAIL"); blockWrites: true; printErrors: false }
+  // What the next paste reads (the kit's wl-paste stand-in), and Omarchy's language.
+  FileView { id: clipboardMode; path: Quickshell.env("TEST_CLIPBOARD_STATE"); blockWrites: true; printErrors: false }
+  FileView { id: language; path: Quickshell.env("OMARCHY_LANGUAGE_FILE"); blockWrites: true; printErrors: false }
 }
 """
 
@@ -746,6 +813,8 @@ def run():
     (stub / "foamy-teams-fake-client").write_text('#!/bin/sh\necho "$*" >> "$FOAMY_CLIENT_LOG"\n')
     (stub / "foamy-teams-fake-client").chmod(0o755)
     r.env["FOAMY_CLIENT_LOG"] = str(r.base / "client.log")
+    # Paste runs kit/clipboard.sh against the kit's wl-paste stand-in, never the real clipboard.
+    r.env.update(harness.hostenv.clipboard_fakes(r.base / "clipboard", env=r.env))
     r.run(timeout=60)
     # Nothing may reach a real omarchy-* host command (the harness stubs log them).
     host = r.host_commands()
