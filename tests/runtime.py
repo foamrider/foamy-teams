@@ -3,8 +3,10 @@ on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
 lazy popup body, the Settings page and its account editor, saves (inline and a
 failed `omarchy bar set` with Retry), a failed paste in the editor (shown in
 Norwegian), the closed modes, the status heading, clicks and keys, launches
-(failed, refused, timed out), the window tracker, the bar count, the account
-order at equal counts, plain-text rendering of page-controlled text and
+(failed, refused, timed out), the window tracker (a title that keeps
+changing; only the windows of configured accounts are read, from a test
+model of windows), the bar count, the account order at equal counts,
+plain-text rendering of page-controlled text and
 preview/Preview.qml's editor state, walked as the kit's render harness does.
 
   python3 tests/runtime.py
@@ -33,6 +35,7 @@ SHELL = r"""import QtQuick
 import QtTest
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "harness"
@@ -126,6 +129,7 @@ ShellRoot {
     calls = []
     inline = true
     bar.position = "top"
+    Plugin.TeamsService.toplevelModel = ToplevelManager.toplevels
     Plugin.TeamsService.matched = []
     Plugin.TeamsService.launchError = ""
     Plugin.TeamsService.launchTimeout.interval = 15000
@@ -482,6 +486,26 @@ ShellRoot {
       next()
     },
 
+    // --- window filter: only the windows of configured accounts are read ---
+    function() {
+      if (!reset("window filter", { accounts: shell.accounts })) return
+      // The compositor's windows, as a model the tracker reads: a terminal
+      // whose title names a private file, and the work and home accounts'.
+      Plugin.TeamsService.toplevelModel = toplevels
+      toplevels.values = [fakeOther, fakeWindow, fakeHome]
+      if (!check(shell.readWindows() === '[["teams-work","(1) Chat | Microsoft Teams"]]', "only the configured account's window is read: " + shell.readWindows())) return
+      if (!check(one.accounts.length === 1 && one.accounts[0].running && one.accounts[0].unread === 1, "the work account shows its window's count: " + JSON.stringify(one.accounts))) return
+      // Another account list: the windows read follow it.
+      for (var p of [one, two]) p.settings = { accounts: [shell.home] }
+      if (!check(shell.readWindows() === '[["teams-home","(1) Chat | Microsoft Teams"]]', "the windows read follow the configured accounts: " + shell.readWindows())) return
+      // A window whose application ID changes away from the account is no longer read.
+      fakeHome.appId = "chromium-other"
+      if (!check(shell.readWindows() === "[]", "a window that leaves the account is no longer read: " + shell.readWindows())) return
+      fakeHome.appId = "teams-home"
+      toplevels.values = []
+      next()
+    },
+
     // --- invalid stored list: editing stays blocked -----------------------
     function() {
       // One invalid stored account (a hand edit) makes the list read as empty;
@@ -759,6 +783,17 @@ ShellRoot {
     property int activations: 0
     function activate() { activations++ }
   }
+  // A window of no account, and the compositor's windows as a test model
+  // (TeamsService.toplevelModel; reset() puts the real one back).
+  QtObject {
+    id: fakeOther
+    property string appId: "kitty"
+    property string title: "watch cat ~/notes/private.txt"
+    property bool activated: true
+  }
+  ScriptModel { id: toplevels; values: [] }
+  // TeamsService's published windows as [appId, title] pairs.
+  function readWindows() { return JSON.stringify(Plugin.TeamsService.windows.map(function(w) { return [w.appId, w.title] })) }
   Connections {
     target: Plugin.TeamsService
     function onWindowsChanged() { if (churn.running) shell.published++ }
