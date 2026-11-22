@@ -500,6 +500,13 @@ ShellRoot {
       one.settings = { accounts: shell.accounts }
       expect(function() { return add.enabled && page.error === "" }, 5000, "a fixed account list unblocks Add", function() { return add.enabled + " " + JSON.stringify(page.error) })
     },
+    function() {
+      // A hand-edited "accounts": null reads as no list, like a missing key:
+      // the list is empty and editable, and no error is shown.
+      var page = shell.page(), add = shell.find(one.popup.bodyItem, "addAccount")
+      one.settings = { accounts: null }
+      expect(function() { return one.definitions.length === 0 && add.enabled && page.error === "" }, 5000, "a null account list shows no error", function() { return add.enabled + " " + JSON.stringify(page.error) })
+    },
 
     // --- account editor: add, edit, move and remove through the view ------
     function() {

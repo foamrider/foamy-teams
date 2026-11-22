@@ -80,6 +80,20 @@ test('the accounts setting hands accountError to the kit, and a bad stored list 
   assert.equal(JSON.stringify(Prefs.value(F, { accounts: [null] }, 'accounts')), '[]')
 })
 
+test('configurationError names an invalid stored list only; a missing or null list is no error, as in the kit', () => {
+  for (const [name, settings, message] of [
+    ['no settings', undefined, ''],
+    ['no accounts key', {}, ''],
+    ['a null list', { accounts: null }, ''],
+    ['a valid list', { accounts: definitions }, ''],
+    ['an object', { accounts: {} }, 'Use at most 32 accounts.'],
+    ['a null account', { accounts: [null] }, 'Invalid account.'],
+  ]) {
+    assert.equal(P.configurationError(settings), message, name)
+    assert.equal(P.configurationError(settings) === '', Prefs.storedProblem(F, settings, 'accounts') === '', name + ': agrees with the kit')
+  }
+})
+
 test('a Teams title gives the unread count and the context; other titles give an unknown count', () => {
   assert.deepEqual(M.titleState('(12) Chat | Team | Microsoft Teams'), { unread: 12, context: 'Chat | Team' })
   assert.equal(M.titleState('Chat | Microsoft Teams').unread, 0)

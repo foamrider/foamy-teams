@@ -31,5 +31,6 @@ function accountError(accounts) {
   }
   return ""
 }
-function configurationError(settings) { return settings && settings.accounts!==undefined ? accountError(settings.accounts) : "" }
+// A missing or null list is no list, as the kit's FoamyPrefs.storedProblem reads it.
+function configurationError(settings) { return settings && settings.accounts!==undefined && settings.accounts!==null ? accountError(settings.accounts) : "" }
 if (typeof module!=="undefined") module.exports={defaults:defaults,fields:fields,accountError:accountError,configurationError:configurationError}
