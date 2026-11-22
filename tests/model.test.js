@@ -99,6 +99,8 @@ test('a Teams title gives the unread count and the context; other titles give an
   assert.equal(M.titleState('Chat | Microsoft Teams').unread, 0)
   for (const title of ['', 'Loading…', 'Sign in | Microsoft Teams', '(99) unrelated', '(9007199254740992) Microsoft Teams'])
     assert.equal(M.titleState(title).unread, null, title)
+  for (const [title, context] of [['Chat   |   Microsoft Teams', 'Chat'], ['(2)  A | B |Microsoft Teams  ', 'A | B'], ['Chat |', 'Chat |'], ['| Microsoft Teams', ''], ['Chat' + ' '.repeat(10) + '| Microsoft Teams', 'Chat']])
+    assert.equal(M.titleState(title).context, context, title)
 })
 
 test('a sign-in page is told apart by whole words, so a chat name that only contains the letters keeps its count', () => {
@@ -106,8 +108,6 @@ test('a sign-in page is told apart by whole words, so a chat name that only cont
     assert.equal(M.titleState(title).unread, null, title)
   for (const [title, unread] of [['(5) Designing the UI | Microsoft Teams', 5], ['(1) Assigning tasks | Microsoft Teams', 1], ['(4) Blog index | Microsoft Teams', 4], ['Designing | Microsoft Teams', 0]])
     assert.equal(M.titleState(title).unread, unread, title)
-  for (const [title, context] of [['Chat   |   Microsoft Teams', 'Chat'], ['(2)  A | B |Microsoft Teams  ', 'A | B'], ['Chat |', 'Chat |'], ['| Microsoft Teams', ''], ['Chat' + ' '.repeat(10) + '| Microsoft Teams', 'Chat']])
-    assert.equal(M.titleState(title).context, context, title)
 })
 
 test('titleState stays linear on a long run of spaces', () => {
