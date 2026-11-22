@@ -3,7 +3,8 @@ function text(value) { return typeof value === "string" ? value : "" }
 function titleState(title) {
   var raw = text(title).trim()
   var count = raw.match(/^\(([0-9]+)\)\s*/)
-  var known = /Microsoft Teams/i.test(raw) && !/sign[ -]?in|log[ -]?in/i.test(raw)
+  // Whole words only: a chat named "Designing" or "Blog index" is no sign-in page.
+  var known = /Microsoft Teams/i.test(raw) && !/\b(?:sign[ -]?in|log[ -]?in)\b/i.test(raw)
   var unread = count && known ? Number(count[1]) : known ? 0 : null
   if (unread !== null && (!isFinite(unread) || unread > 9007199254740991)) unread = null
   // raw is trimmed and the result is trimmed again, so the suffix pattern
