@@ -327,7 +327,10 @@ PanelKeyCatcher {
     saving: root.saving
     panelError: root.settingsError
     accountsLocked: root.accountsLocked
-    retryable: root.retryable
+    // Retry runs the panel's failed save again (a removal, too): it shows
+    // only beside that save's error, not while a paste or local error
+    // takes its place on the page.
+    retryable: root.retryable && settingsPane.pasteError === "" && settingsPane.localError === ""
     onSave: function (key, value) {
       root.saveRequested(key, value)
     }

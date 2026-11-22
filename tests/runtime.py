@@ -1,10 +1,15 @@
 """Load the real Panel.qml twice (two monitors) in an isolated offscreen shell
 on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
-lazy popup body, the Settings page and its account editor, saves (inline and a
-failed `omarchy bar set` with Retry), the closed modes, the status heading,
-clicks and keys, launches (failed, refused, timed out), the window tracker,
-the bar count, the account order at equal counts and plain-text rendering of
-page-controlled text.
+lazy popup body, the Settings page and its account editor, the keys after the
+editor closes on a focused field, saves (inline and a failed `omarchy bar set`
+with Retry), a failed paste in the editor and the error of a Save or Remove
+after it, with Retry only beside a failed save (in Norwegian), the closed
+modes, the status heading, clicks and keys, launches (failed, refused, timed
+out), the window tracker (a title that keeps changing; only the windows of
+configured accounts are read, from a test model of windows), the bar count,
+the account order at equal counts, plain-text rendering of page-controlled
+text and preview/Preview.qml's editor state, walked as the kit's render
+harness does.
 
   python3 tests/runtime.py
 
@@ -12,8 +17,9 @@ Runs on the installed /usr/share/omarchy/shell, or the tree in FOAMY_HOST_45.
 
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
-`omarchy` CLI is a stub that logs its arguments and fails one call when a
-scenario asks for it; the Teams client is a stub that logs its arguments.
+`omarchy` and `omarchy-shell` CLIs are stubs that log their arguments and fail
+one call when a scenario asks for it; the Teams client is a stub that logs its
+arguments; a paste reads the kit's wl-paste stand-in (hostenv.clipboard_fakes).
 """
 
 import os
@@ -28,8 +34,10 @@ sys.path.insert(0, str(kit / "preview"))
 import harness  # noqa: E402
 
 SHELL = r"""import QtQuick
+import QtTest
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "harness"
@@ -58,6 +66,10 @@ ShellRoot {
   // of hiding a second foamy.teams handler.
   IpcHandler { target: "foamy-teams-probe"; function ping(): void {} }
   IpcHandler { target: "foamy-teams-probe"; function ping(): void {} }
+
+  // preview/Preview.qml's own bar, so its open popup never takes one of the panels' places.
+  MockBar { id: previewBar }
+  property var preview: null
 
   MockBar {
     id: bar
@@ -92,6 +104,8 @@ ShellRoot {
   }
 
   FoamyWait { id: wait }
+  // Keys as a user types them, to the window that has the keys.
+  TestEvent { id: ev }
 
   // Each step acts, then waits for the state it expects instead of a fixed
   // tick, so a loaded machine only makes the run slower, never wrong.
@@ -117,6 +131,7 @@ ShellRoot {
     calls = []
     inline = true
     bar.position = "top"
+    Plugin.TeamsService.toplevelModel = ToplevelManager.toplevels
     Plugin.TeamsService.matched = []
     Plugin.TeamsService.launchError = ""
     Plugin.TeamsService.launchTimeout.interval = 15000
@@ -236,7 +251,7 @@ ShellRoot {
     function() {
       shell.inline = false
       // The stub fails the next CLI call, then removes the marker.
-      cliFail.setText("1\n")
+      shell.failNextCli()
       one.savePreference("showCount", false)
       if (!check(one.saving, "the save runs through the CLI")) return
       expect(function() { return !one.saving }, 18000, "the failed CLI save ends")
@@ -473,6 +488,26 @@ ShellRoot {
       next()
     },
 
+    // --- window filter: only the windows of configured accounts are read ---
+    function() {
+      if (!reset("window filter", { accounts: shell.accounts })) return
+      // The compositor's windows, as a model the tracker reads: a terminal
+      // whose title names a private file, and the work and home accounts'.
+      Plugin.TeamsService.toplevelModel = toplevels
+      toplevels.values = [fakeOther, fakeWindow, fakeHome]
+      if (!check(shell.readWindows() === '[["teams-work","(1) Chat | Microsoft Teams"]]', "only the configured account's window is read: " + shell.readWindows())) return
+      if (!check(one.accounts.length === 1 && one.accounts[0].running && one.accounts[0].unread === 1, "the work account shows its window's count: " + JSON.stringify(one.accounts))) return
+      // Another account list: the windows read follow it.
+      for (var p of [one, two]) p.settings = { accounts: [shell.home] }
+      if (!check(shell.readWindows() === '[["teams-home","(1) Chat | Microsoft Teams"]]', "the windows read follow the configured accounts: " + shell.readWindows())) return
+      // A window whose application ID changes away from the account is no longer read.
+      fakeHome.appId = "chromium-other"
+      if (!check(shell.readWindows() === "[]", "a window that leaves the account is no longer read: " + shell.readWindows())) return
+      fakeHome.appId = "teams-home"
+      toplevels.values = []
+      next()
+    },
+
     // --- invalid stored list: editing stays blocked -----------------------
     function() {
       // One invalid stored account (a hand edit) makes the list read as empty;
@@ -563,6 +598,153 @@ ShellRoot {
       next()
     },
 
+    // --- editor keys: the keys work after the editor closes on a field ----
+    function() {
+      if (!reset("editor keys", { accounts: shell.accounts })) return
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "addAccount") !== null }, 5000, "Settings opens")
+    },
+    function() {
+      shell.find(one.popup.bodyItem, "addAccount").clicked()
+      expect(function() { var name = shell.editorFields(shell.page())[0]; return name && name.inputActiveFocus }, 5000, "Add opens the editor with the keys in the name field")
+    },
+    function() {
+      var page = shell.page()
+      for (var c of "Home") ev.keyClickChar(c, Qt.NoModifier, -1)
+      if (!check(page.draft.name === "Home", "typing goes to the name field: " + JSON.stringify(page.draft.name))) return
+      page.change("appId", "teams-home")
+      // Saved with the pointer: the name field still has the keys when the
+      // editor closes and hides it.
+      page.saveAccount()
+      if (!check(shell.calls.length === 1 && !page.editing, "Save closes the editor: " + JSON.stringify([shell.calls.length, page.editing, page.error]))) return
+      if (!check(page.backTarget.activeFocus, "the keys are on Back again, as when the page opens: " + shell.focusName())) return
+      ev.keyClick(Qt.Key_Escape, Qt.NoModifier, -1)
+      expect(function() { return one.opened && !one.editingSettings }, 5000, "Esc leaves Settings", shell.focusName)
+    },
+    function() {
+      ev.keyClick(Qt.Key_Escape, Qt.NoModifier, -1)
+      expect(function() { return !one.opened }, 5000, "Esc on the account list closes the popup", shell.focusName)
+    },
+
+    // --- paste errors: a failed paste says why, in the page's language ----
+    function() {
+      if (!reset("paste errors", { accounts: shell.accounts })) return
+      language.setText("no\n")
+      one.open()
+      one.openSettings()
+      expect(function() { return Kit.FoamyI18n.language === "no" && one.editingSettings && shell.page() !== null }, 5000, "Settings opens in Norwegian")
+    },
+    function() {
+      shell.page().edit(one.definitions[0])
+      expect(function() { var name = shell.editorFields(shell.page())[0]; return name && name.text === "Work" && name.inputActiveFocus }, 5000, "the editor opens with the keys in the name field")
+    },
+    function() {
+      // Ctrl+V with a clipboard text over the kit's 16 KiB limit (the kit's
+      // wl-paste stand-in): the paste fails and the page says why.
+      clipboardMode.setText("large")
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      var name = shell.editorFields(shell.page())[0]
+      expect(function() { return shell.page().error === Kit.FoamyI18n.t("Clipboard text is too large or contains invalid characters.") }, 10000, "a paste over the limit shows why on the page",
+             function() { return JSON.stringify([shell.page().error, name.pasteError, name.text]) })
+    },
+    function() {
+      clipboardMode.setText("normal")
+      var page = shell.page(), fields = shell.editorFields(page)
+      if (!check(fields.length === 6 && fields[0].text === "Work" && page.draft.name === "Work", "the failed paste leaves the name as it was: " + JSON.stringify([fields.length, fields[0].text, page.draft.name]))) return
+      // The next edit clears the message, as it clears the field's paste error.
+      ev.keyClickChar("x", Qt.NoModifier, -1)
+      if (!check(page.draft.name.length === 5 && page.error === "", "typing clears the paste error: " + JSON.stringify([page.draft.name, page.error]))) return
+      // Each field's paste error, set as the kit sets it after a failed
+      // paste, shows on the page in Norwegian.
+      var messages = ["Clipboard paste timed out. Copy the text again.", "Clipboard text is too large or contains invalid characters.", "Could not paste clipboard text. Copy plain text and try again."]
+      for (var i = 0; i < fields.length; i++) {
+        for (var english of messages) {
+          var shown = Kit.FoamyI18n.t(english)
+          fields[i].pasteError = english
+          if (!check(shown !== english && page.error === shown, "text field " + i + ": the paste error shows in Norwegian, got " + JSON.stringify(page.error) + " for " + JSON.stringify(english))) return
+          fields[i].pasteError = ""
+        }
+      }
+      // A paste error goes with the editor: the account list shows none.
+      fields[2].pasteError = messages[0]
+      page.leaveEditor()
+      if (!check(page.error === "", "the closed editor leaves no paste error: " + JSON.stringify(page.error))) return
+      // A new account with a name and no application ID.
+      shell.find(one.popup.bodyItem, "addAccount").clicked()
+      expect(function() { return page.adding && shell.editorFields(page)[0].inputActiveFocus }, 5000, "Add opens the editor with the keys in the name field")
+    },
+    function() {
+      var page = shell.page(), appId = shell.editorFields(page)[1]
+      for (var c of "Home") ev.keyClickChar(c, Qt.NoModifier, -1)
+      // A paste into the application ID field fails (wl-paste fails).
+      appId.focusInput()
+      clipboardMode.setText("failure")
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      expect(function() { return page.error === Kit.FoamyI18n.t("Could not paste clipboard text. Copy plain text and try again.") }, 10000, "a failed paste in the application ID field shows why",
+             function() { return JSON.stringify([page.error, page.draft.name, appId.pasteError]) })
+    },
+    function() {
+      var page = shell.page(), saves = shell.calls.length
+      // Save without touching the field: the save's own error shows, not
+      // the older paste error.
+      page.saveAccount()
+      if (!check(page.editing && shell.calls.length === saves && page.error === Kit.FoamyI18n.t("Choose a window or enter its application ID."), "Save after a failed paste shows why the save failed: " + JSON.stringify(page.error))) return
+      // A paste that fails after the save shows again: the newest message wins.
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      expect(function() { return page.error === Kit.FoamyI18n.t("Could not paste clipboard text. Copy plain text and try again.") }, 10000, "a paste that fails after the save shows why", function() { return JSON.stringify(page.error) })
+    },
+    function() {
+      var page = shell.page()
+      page.leaveEditor()
+      page.edit(one.definitions[0])
+      expect(function() { return !page.adding && shell.editorFields(page)[0].inputActiveFocus }, 5000, "the editor opens on the account with the keys in the name field")
+    },
+    function() {
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      var page = shell.page()
+      expect(function() { return page.error === Kit.FoamyI18n.t("Could not paste clipboard text. Copy plain text and try again.") }, 10000, "a failed paste in the name field shows why", function() { return JSON.stringify(page.error) })
+    },
+    function() {
+      // Remove, and its save fails (the CLI fails once): the failed save
+      // shows with Retry, not the older paste error.
+      shell.inline = false
+      shell.failNextCli()
+      var page = shell.page()
+      page.remove(page.draft.id)
+      expect(function() { return !one.saving }, 18000, "the failed CLI save ends")
+    },
+    function() {
+      var page = shell.page(), name = shell.editorFields(page)[0]
+      if (!check(page.error === Kit.FoamyI18n.t("Couldn't save the setting.") && page.retryable === true, "Remove after a failed paste shows the failed save with Retry: " + JSON.stringify([page.error, page.retryable]))) return
+      // A paste that fails now replaces the message. Retry would run the
+      // failed removal again, so it must not show beside the paste error.
+      name.focusInput()
+      if (!check(name.inputActiveFocus, "the name field takes the keys again")) return
+      ev.keyClick(Qt.Key_V, Qt.ControlModifier, -1)
+      expect(function() { return page.error === Kit.FoamyI18n.t("Could not paste clipboard text. Copy plain text and try again.") }, 10000, "a failed paste after the failed removal shows why", function() { return JSON.stringify(page.error) })
+    },
+    function() {
+      var page = shell.page()
+      if (!check(!page.retryable, "no Retry beside the paste error: it would run the failed removal again")) return
+      // Typing clears the paste error: the failed save and its Retry show again.
+      ev.keyClickChar("x", Qt.NoModifier, -1)
+      if (!check(page.error === Kit.FoamyI18n.t("Couldn't save the setting.") && page.retryable === true, "the failed save and its Retry show again: " + JSON.stringify([page.error, page.retryable]))) return
+      // The same for a Save the page refuses: its own error shows, with no Retry.
+      page.change("name", "")
+      page.saveAccount()
+      if (!check(page.error === Kit.FoamyI18n.t("Enter an account name.") && !page.retryable, "no Retry beside the refused Save's error: " + JSON.stringify([page.error, page.retryable]))) return
+      // Retry removes the account and closes the editor.
+      page.retry()
+      expect(function() { return !one.saving && page.error === "" && !page.editing }, 18000, "Retry saves the removal", function() { return JSON.stringify([one.saving, page.error, page.editing]) })
+    },
+    function() {
+      shell.inline = true
+      clipboardMode.setText("normal")
+      language.setText("en\n")
+      expect(function() { return Kit.FoamyI18n.language === "en" }, 5000, "the run goes on in English")
+    },
+
     // --- bar count --------------------------------------------------------
     function() {
       if (!reset("bar count", { accounts: [shell.work, shell.home], showCount: true })) return
@@ -634,6 +816,30 @@ ShellRoot {
       next()
     },
 
+    // --- preview: the states the kit's render harness walks ----------------
+    function() {
+      if (!reset("preview", { accounts: shell.accounts })) return
+      // As preview/render.py loads it: a bar and an anchor, then every state
+      // in the order of previewStates.
+      var component = Qt.createComponent(Qt.resolvedUrl("plugin/preview/Preview.qml"))
+      shell.preview = component.createObject(sim.content, { bar: previewBar, anchorItem: sim.anchor })
+      if (!check(shell.preview !== null, "the preview loads: " + component.errorString())) return
+      expect(function() { return shell.preview.popup.bodyItem !== null }, 5000, "the preview's popup builds its body")
+    },
+    function() {
+      var states = shell.preview.previewStates
+      for (var i = 0; i < states.indexOf("editor"); i++) shell.preview.previewState = states[i]
+      shell.preview.previewState = "editor"
+      var page = shell.find(shell.preview.popup.bodyItem, "teamsSettings")
+      expect(function() { return page.visible && page.editing && !page.adding && page.draft.id === "work" }, 5000, "the preview's editor state shows the account editor, not the settings list",
+             function() { return JSON.stringify([page.visible, page.editing, page.accountsLocked, page.title]) })
+    },
+    function() {
+      shell.preview.destroy()
+      shell.preview = null
+      next()
+    },
+
     // --- createObject settings --------------------------------------------
     function() {
       if (!reset("createObject settings", { accounts: shell.accounts })) return
@@ -679,6 +885,17 @@ ShellRoot {
     property int activations: 0
     function activate() { activations++ }
   }
+  // A window of no account, and the compositor's windows as a test model
+  // (TeamsService.toplevelModel; reset() puts the real one back).
+  QtObject {
+    id: fakeOther
+    property string appId: "kitty"
+    property string title: "watch cat ~/notes/private.txt"
+    property bool activated: true
+  }
+  ScriptModel { id: toplevels; values: [] }
+  // TeamsService's published windows as [appId, title] pairs.
+  function readWindows() { return JSON.stringify(Plugin.TeamsService.windows.map(function(w) { return [w.appId, w.title] })) }
   Connections {
     target: Plugin.TeamsService
     function onWindowsChanged() { if (churn.running) shell.published++ }
@@ -700,6 +917,24 @@ ShellRoot {
     for (var i = 0; i < kids.length; i++) { var hit = find(kids[i], name); if (hit) return hit }
     return null
   }
+  // Where the keys are: the window's active focus item and its parent.
+  function focusName() {
+    var item = sim.Window.window ? sim.Window.window.activeFocusItem : null
+    return item ? String(item) + " in " + String(item.parent) : "nothing"
+  }
+  // The account editor's text fields (kit SafeTextFields) in page order:
+  // name, application ID, browser, profile, URL, launch arguments.
+  function editorFields(page) {
+    var found = []
+    function walk(item) {
+      if (!item) return
+      if (item.pasteError !== undefined && item.editorItem !== undefined) { found.push(item); return }
+      var kids = item.children || []
+      for (var i = 0; i < kids.length; i++) walk(kids[i])
+    }
+    walk(page)
+    return found
+  }
   // The first visible item whose text is exactly `text`.
   function findText(item, text) {
     if (!item || !item.visible) return null
@@ -713,16 +948,26 @@ ShellRoot {
     var text = cliView.text().trim()
     return text ? text.split("\n") : []
   }
-  // The `omarchy` calls of the current scenario.
+  // The `omarchy` and `omarchy-shell` calls of the current scenario.
   property int cliBase: 0
   FileView { id: cliView; path: Quickshell.env("FOAMY_CLI_LOG"); blockLoading: true; printErrors: false }
   FileView { id: cliFail; path: Quickshell.env("FOAMY_CLI_FAIL"); blockWrites: true; printErrors: false }
+  // Fails the next `omarchy` or `omarchy-shell` call. A FileView skips a
+  // write of the text it holds, and the stub deletes the marker, so each
+  // marker gets a new text.
+  property int cliFailures: 0
+  function failNextCli() { cliFail.setText(String(++cliFailures) + "\n") }
+  // What the next paste reads (the kit's wl-paste stand-in), and Omarchy's language.
+  FileView { id: clipboardMode; path: Quickshell.env("TEST_CLIPBOARD_STATE"); blockWrites: true; printErrors: false }
+  FileView { id: language; path: Quickshell.env("OMARCHY_LANGUAGE_FILE"); blockWrites: true; printErrors: false }
 }
 """
 
-# The `omarchy` stub: logs its arguments and succeeds, unless a scenario
-# wrote the marker file: then this one call fails (a failed `omarchy bar
-# set`) and the marker is removed, so a retry succeeds.
+# The `omarchy` and `omarchy-shell` stubs: log their arguments and succeed
+# (`omarchy-shell` answers "ok", as the shell's setBarWidget does; a list
+# such as the accounts is saved that way), unless a scenario wrote the
+# marker file: then this one call fails (a failed `omarchy bar set` or
+# setBarWidget) and the marker is removed, so a retry succeeds.
 OMARCHY_STUB = """#!/bin/sh
 echo "$*" >> "$FOAMY_CLI_LOG"
 if [ -f "$FOAMY_CLI_FAIL" ]; then
@@ -739,6 +984,8 @@ def run():
     log = r.base / "cli.log"
     (stub / "omarchy").write_text(OMARCHY_STUB)
     (stub / "omarchy").chmod(0o755)
+    (stub / "omarchy-shell").write_text(OMARCHY_STUB + "echo ok\n")
+    (stub / "omarchy-shell").chmod(0o755)
     r.env["PATH"] = f"{stub}:{r.env['PATH']}"
     r.env["FOAMY_CLI_LOG"] = str(log)
     r.env["FOAMY_CLI_FAIL"] = str(r.base / "cli-fail")
@@ -746,6 +993,8 @@ def run():
     (stub / "foamy-teams-fake-client").write_text('#!/bin/sh\necho "$*" >> "$FOAMY_CLIENT_LOG"\n')
     (stub / "foamy-teams-fake-client").chmod(0o755)
     r.env["FOAMY_CLIENT_LOG"] = str(r.base / "client.log")
+    # Paste runs kit/clipboard.sh against the kit's wl-paste stand-in, never the real clipboard.
+    r.env.update(harness.hostenv.clipboard_fakes(r.base / "clipboard", env=r.env))
     r.run(timeout=60)
     # Nothing may reach a real omarchy-* host command (the harness stubs log them).
     host = r.host_commands()

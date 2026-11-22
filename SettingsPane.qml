@@ -31,9 +31,17 @@ FoamySettingsPage {
   signal backToPanel
 
   title: FoamyI18n.t(editing ? (adding ? "New account" : "Edit account") : "Settings")
-  // Local validation first, then the panel's save error.
+  // The editor's text fields. A failed paste sets one's pasteError (the kit's
+  // English message); the field clears it when its text changes, a new paste
+  // starts or it hides, and a save from the editor clears it.
+  readonly property var textFields: [nameField, appIdField, browserField, profileField, urlField, commandField]
+  readonly property string pasteError: textFields.reduce(function (error, field) {
+    return error || field.pasteError
+  }, "")
+  // A failed paste first: it is newer than the last save, which clears it.
+  // Then local validation, then the panel's save error.
   property string panelError: ""
-  error: localError || panelError
+  error: pasteError ? tr(pasteError) : localError || panelError
   onBack: {
     if (editing)
       leaveEditor()
@@ -81,9 +89,16 @@ FoamySettingsPage {
     next[key] = value
     draft = next
   }
+  // A save is the user's next action after a failed paste: its own error
+  // must show, and the older paste error would hide it.
+  function clearPasteErrors() {
+    for (const field of textFields)
+      field.pasteError = ""
+  }
   function saveAccount() {
     if (accountsLocked)
       return
+    clearPasteErrors()
     if (accountsBaseline !== JSON.stringify(definitions)) {
       localError = tr("Settings changed elsewhere. Reopen the account editor.")
       return
@@ -115,10 +130,12 @@ FoamySettingsPage {
       leaveEditor()
   }
   function remove(id) {
-    if (!accountsLocked)
-      root.save("accounts", definitions.filter(function (a) {
-        return a.id !== id
-      }))
+    if (accountsLocked)
+      return
+    clearPasteErrors()
+    root.save("accounts", definitions.filter(function (a) {
+      return a.id !== id
+    }))
   }
   function move(index, delta) {
     if (accountsLocked)
@@ -364,6 +381,7 @@ FoamySettingsPage {
       text: root.tr("Application ID")
     }
     SafeTextField {
+      id: appIdField
       width: parent.width
       text: root.draft.appId || ""
       translate: FoamyI18n.t
@@ -389,6 +407,7 @@ FoamySettingsPage {
       text: root.tr("Browser executable")
     }
     SafeTextField {
+      id: browserField
       width: parent.width
       text: root.draft.browser || ""
       translate: FoamyI18n.t
@@ -399,6 +418,7 @@ FoamySettingsPage {
       text: root.tr("Browser profile")
     }
     SafeTextField {
+      id: profileField
       width: parent.width
       text: root.draft.profile || ""
       translate: FoamyI18n.t
@@ -409,6 +429,7 @@ FoamySettingsPage {
       text: root.tr("Teams URL")
     }
     SafeTextField {
+      id: urlField
       width: parent.width
       text: root.draft.url || ""
       translate: FoamyI18n.t
@@ -419,6 +440,7 @@ FoamySettingsPage {
       text: root.tr("Advanced launch arguments (JSON array)")
     }
     SafeTextField {
+      id: commandField
       width: parent.width
       text: root.commandDraft
       translate: FoamyI18n.t

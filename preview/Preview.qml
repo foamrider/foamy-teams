@@ -87,8 +87,15 @@ Item {
   // A hand-edited shell.json with one invalid account: the list reads empty and editing is blocked.
   readonly property bool invalid: previewState === "invalid"
 
-  onPreviewStateChanged: if (previewState === "editor" && popup.bodyItem)
-    popup.bodyItem.editAccount(definitions[0])
+  // Called later, once the view's bindings follow the new state: in the
+  // handler they may still hold the state before ("invalid" locks the
+  // account list, and the editor then refuses to open).
+  function openEditor() {
+    if (previewState === "editor" && popup.bodyItem)
+      popup.bodyItem.editAccount(definitions[0])
+  }
+  onPreviewStateChanged: if (previewState === "editor")
+    Qt.callLater(openEditor)
 
   FoamyPopup {
     id: previewPopup

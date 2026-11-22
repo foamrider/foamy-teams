@@ -89,10 +89,16 @@ Multiple windows for an account use the highest reported count to avoid double
 counting. Opening the panel does not mark messages read. Window changes update
 reactively, without polling or background Teams requests.
 
-Only windows whose application ID belongs to an enabled account are read; other
-windows' titles are never inspected (the Settings window picker lists
-application IDs only while Settings is open). Title changes are coalesced for
-250 ms, and one tracker serves every monitor's bar.
+To find your accounts' windows, the widget reads the application ID of every
+open window. It reads the title and focus state only of windows whose
+application ID belongs to an enabled account. The one exception is the
+Settings window picker: while Settings is open, it also reads every window's
+title, only to offer the windows whose application ID contains "teams" or whose
+title contains "Microsoft Teams", and it lists their application IDs, not their
+titles. It drops that list when Settings closes. Window titles stay in memory
+and are never saved; the picker saves only the application ID you choose, with
+the account. Title changes are coalesced for 250 ms, and one tracker serves
+every monitor's bar.
 
 ## Development
 

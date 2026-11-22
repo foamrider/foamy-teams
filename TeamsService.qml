@@ -37,9 +37,13 @@ QtObject {
   property string publishedSignature: ""
   // Title/focus changes inside this window are coalesced into one update.
   readonly property int settleMs: 250
+  // The compositor's windows. A test puts its own model of windows here
+  // (offscreen there are none): the list, its changes and each window's
+  // application ID are all read from this model.
+  property var toplevelModel: ToplevelManager.toplevels
 
   function toplevelList() {
-    return ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []
+    return toplevelModel ? toplevelModel.values : []
   }
 
   function snapshot(list) {
@@ -148,7 +152,7 @@ QtObject {
   }
 
   property Connections listWatcher: Connections {
-    target: ToplevelManager.toplevels
+    target: root.toplevelModel
     function onValuesChanged() {
       root.rematch()
     }
@@ -157,7 +161,7 @@ QtObject {
   // Every window: only its application ID (rarely changes after mapping) and,
   // while Settings is open, its title for the window picker.
   property Instantiator identityWatchers: Instantiator {
-    model: ToplevelManager.toplevels
+    model: root.toplevelModel
     delegate: QtObject {
       id: watcher
       required property var modelData
