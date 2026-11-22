@@ -1,13 +1,14 @@
 """Load the real Panel.qml twice (two monitors) in an isolated offscreen shell
 on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
-lazy popup body, the Settings page and its account editor, saves (inline and a
-failed `omarchy bar set` with Retry), a failed paste in the editor (shown in
-Norwegian), the closed modes, the status heading, clicks and keys, launches
-(failed, refused, timed out), the window tracker (a title that keeps
-changing; only the windows of configured accounts are read, from a test
-model of windows), the bar count, the account order at equal counts,
-plain-text rendering of page-controlled text and
-preview/Preview.qml's editor state, walked as the kit's render harness does.
+lazy popup body, the Settings page and its account editor, the keys after the
+editor closes on a focused field, saves (inline and a failed `omarchy bar set`
+with Retry), a failed paste in the editor (shown in Norwegian), the closed
+modes, the status heading, clicks and keys, launches (failed, refused, timed
+out), the window tracker (a title that keeps changing; only the windows of
+configured accounts are read, from a test model of windows), the bar count,
+the account order at equal counts, plain-text rendering of page-controlled
+text and preview/Preview.qml's editor state, walked as the kit's render
+harness does.
 
   python3 tests/runtime.py
 
@@ -596,6 +597,35 @@ ShellRoot {
       next()
     },
 
+    // --- editor keys: the keys work after the editor closes on a field ----
+    function() {
+      if (!reset("editor keys", { accounts: shell.accounts })) return
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "addAccount") !== null }, 5000, "Settings opens")
+    },
+    function() {
+      shell.find(one.popup.bodyItem, "addAccount").clicked()
+      expect(function() { var name = shell.editorFields(shell.page())[0]; return name && name.inputActiveFocus }, 5000, "Add opens the editor with the keys in the name field")
+    },
+    function() {
+      var page = shell.page()
+      for (var c of "Home") ev.keyClickChar(c, Qt.NoModifier, -1)
+      if (!check(page.draft.name === "Home", "typing goes to the name field: " + JSON.stringify(page.draft.name))) return
+      page.change("appId", "teams-home")
+      // Saved with the pointer: the name field still has the keys when the
+      // editor closes and hides it.
+      page.saveAccount()
+      if (!check(shell.calls.length === 1 && !page.editing, "Save closes the editor: " + JSON.stringify([shell.calls.length, page.editing, page.error]))) return
+      if (!check(page.backTarget.activeFocus, "the keys are on Back again, as when the page opens: " + shell.focusName())) return
+      ev.keyClick(Qt.Key_Escape, Qt.NoModifier, -1)
+      expect(function() { return one.opened && !one.editingSettings }, 5000, "Esc leaves Settings", shell.focusName)
+    },
+    function() {
+      ev.keyClick(Qt.Key_Escape, Qt.NoModifier, -1)
+      expect(function() { return !one.opened }, 5000, "Esc on the account list closes the popup", shell.focusName)
+    },
+
     // --- paste errors: a failed paste says why, in the page's language ----
     function() {
       if (!reset("paste errors", { accounts: shell.accounts })) return
@@ -814,6 +844,11 @@ ShellRoot {
     var kids = item.children || []
     for (var i = 0; i < kids.length; i++) { var hit = find(kids[i], name); if (hit) return hit }
     return null
+  }
+  // Where the keys are: the window's active focus item and its parent.
+  function focusName() {
+    var item = sim.Window.window ? sim.Window.window.activeFocusItem : null
+    return item ? String(item) + " in " + String(item.parent) : "nothing"
   }
   // The account editor's text fields (kit SafeTextFields) in page order:
   // name, application ID, browser, profile, URL, launch arguments.
