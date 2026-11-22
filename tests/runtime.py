@@ -4,7 +4,8 @@ lazy popup body, the Settings page and its account editor, saves (inline and a
 failed `omarchy bar set` with Retry), a failed paste in the editor (shown in
 Norwegian), the closed modes, the status heading, clicks and keys, launches
 (failed, refused, timed out), the window tracker, the bar count, the account
-order at equal counts and plain-text rendering of page-controlled text.
+order at equal counts, plain-text rendering of page-controlled text and
+preview/Preview.qml's editor state, walked as the kit's render harness does.
 
   python3 tests/runtime.py
 
@@ -60,6 +61,10 @@ ShellRoot {
   // of hiding a second foamy.teams handler.
   IpcHandler { target: "foamy-teams-probe"; function ping(): void {} }
   IpcHandler { target: "foamy-teams-probe"; function ping(): void {} }
+
+  // preview/Preview.qml's own bar, so its open popup never takes one of the panels' places.
+  MockBar { id: previewBar }
+  property var preview: null
 
   MockBar {
     id: bar
@@ -682,6 +687,30 @@ ShellRoot {
       var context = shell.findText(body, '<b>Bold</b> <img src="x">'), name = shell.findText(body, "<i>Work</i>")
       if (!check(context.textFormat === Text.PlainText && name && name.textFormat === Text.PlainText, "page-controlled text is plain text: " + JSON.stringify([context.textFormat, name && name.textFormat]))) return
       if (!check(shell.findText(body, one.tr("Not running")) !== null, "a closed account says it is not running")) return
+      next()
+    },
+
+    // --- preview: the states the kit's render harness walks ----------------
+    function() {
+      if (!reset("preview", { accounts: shell.accounts })) return
+      // As preview/render.py loads it: a bar and an anchor, then every state
+      // in the order of previewStates.
+      var component = Qt.createComponent(Qt.resolvedUrl("plugin/preview/Preview.qml"))
+      shell.preview = component.createObject(sim.content, { bar: previewBar, anchorItem: sim.anchor })
+      if (!check(shell.preview !== null, "the preview loads: " + component.errorString())) return
+      expect(function() { return shell.preview.popup.bodyItem !== null }, 5000, "the preview's popup builds its body")
+    },
+    function() {
+      var states = shell.preview.previewStates
+      for (var i = 0; i < states.indexOf("editor"); i++) shell.preview.previewState = states[i]
+      shell.preview.previewState = "editor"
+      var page = shell.find(shell.preview.popup.bodyItem, "teamsSettings")
+      expect(function() { return page.visible && page.editing && !page.adding && page.draft.id === "work" }, 5000, "the preview's editor state shows the account editor, not the settings list",
+             function() { return JSON.stringify([page.visible, page.editing, page.accountsLocked, page.title]) })
+    },
+    function() {
+      shell.preview.destroy()
+      shell.preview = null
       next()
     },
 
