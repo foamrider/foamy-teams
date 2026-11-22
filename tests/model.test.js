@@ -127,6 +127,7 @@ test('middle-click picks the preferred account, else the most unread, then focus
     ['no preferred id gives the most unread', [row('less', 1, true), row('more', 5, true)], '', 'more'],
     ['at equal unread a focused account beats a running one', [row('running', 2, true), row('focused', 2, true, true)], '', 'focused'],
     ['at equal unread a running account beats a closed one', [row('closed', null, false), row('running', 0, true)], '', 'running'],
+    ['at a full tie the first configured account wins', [row('first', 1, true), row('second', 1, true), row('third', 1, true)], '', 'first'],
   ]
   for (const [name, accounts, preferred, expected] of rows) assert.equal(M.primaryAccount(accounts, preferred).id, expected, name)
   assert.equal(M.primaryAccount([], ''), null)

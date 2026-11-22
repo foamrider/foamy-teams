@@ -30,17 +30,24 @@ function summary(accounts) {
     return s
   }, {totalUnread:0,runningCount:0,unknownCount:0,accountCount:accounts.length})
 }
+// A sorted copy in which equal items keep their order. The QML engine's
+// Array.prototype.sort is not stable, so the index breaks ties.
+function stableSort(items, compare) {
+  return items.map(function(item, index) { return { item:item, index:index } })
+    .sort(function(a,b) { return compare(a.item, b.item) || a.index-b.index })
+    .map(function(entry) { return entry.item })
+}
 function primaryAccount(accounts, preferred) {
   var chosen = accounts.find(function(a) { return a.id === preferred })
   if (chosen) return chosen
-  return accounts.slice().sort(function(a,b) {
+  return stableSort(accounts, function(a,b) {
     return (b.unread || 0) - (a.unread || 0) || Number(b.active)-Number(a.active) || Number(b.running)-Number(a.running)
   })[0] || null
 }
 function displayedAccounts(accounts, showClosed, unreadFirst) {
   var result=accounts.filter(function(a) { return showClosed || a.running })
   // Keep configured order for equal counts, including unknown counts.
-  if (unreadFirst) result.sort(function(a,b) { return (b.unread || 0)-(a.unread || 0) })
+  if (unreadFirst) result=stableSort(result, function(a,b) { return (b.unread || 0)-(a.unread || 0) })
   return result
 }
 function candidates(windows) {
