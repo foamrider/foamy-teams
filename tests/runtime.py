@@ -3,7 +3,8 @@ on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
 lazy popup body, the Settings page and its account editor, saves (inline and a
 failed `omarchy bar set` with Retry), the closed modes, the status heading,
 clicks and keys, launches (failed, refused, timed out), the window tracker,
-the bar count and plain-text rendering of page-controlled text.
+the bar count, the account order at equal counts and plain-text rendering of
+page-controlled text.
 
   python3 tests/runtime.py
 
@@ -72,6 +73,17 @@ ShellRoot {
   readonly property var home: ({ id: "home", name: "Home", appId: "teams-home", enabled: true, browser: "omarchy-launch-webapp", profile: "", url: "https://teams.microsoft.com", command: [] })
   readonly property var accounts: [work]
   function account(base, changes) { return Object.assign({}, base, changes || {}) }
+  // Windows of the "equal counts" accounts tie0..tie7: one unread each, two
+  // for the account at index `higher`; activating one records its account in
+  // `picked`.
+  property string picked: ""
+  function tieToplevel(id) { return { activate: function() { shell.picked = id } } }
+  function tieWindows(higher) {
+    var windows = []
+    for (var i = 0; i < 8; i++)
+      windows.push(teamsWindow("teams-tie" + i, "(" + (i === higher ? 2 : 1) + ") Chat | Microsoft Teams", tieToplevel("tie" + i)))
+    return windows
+  }
   function teamsWindow(appId, title, toplevel) { return { appId: appId, title: title, activated: false, toplevel: toplevel || null } }
 
   Component.onCompleted: {
@@ -488,6 +500,13 @@ ShellRoot {
       one.settings = { accounts: shell.accounts }
       expect(function() { return add.enabled && page.error === "" }, 5000, "a fixed account list unblocks Add", function() { return add.enabled + " " + JSON.stringify(page.error) })
     },
+    function() {
+      // A hand-edited "accounts": null reads as no list, like a missing key:
+      // the list is empty and editable, and no error is shown.
+      var page = shell.page(), add = shell.find(one.popup.bodyItem, "addAccount")
+      one.settings = { accounts: null }
+      expect(function() { return one.definitions.length === 0 && add.enabled && page.error === "" }, 5000, "a null account list shows no error", function() { return add.enabled + " " + JSON.stringify(page.error) })
+    },
 
     // --- account editor: add, edit, move and remove through the view ------
     function() {
@@ -565,6 +584,26 @@ ShellRoot {
       if (!check(!count.visible, "a vertical bar shows no count")) return
       bar.position = "top"
       if (!check(count.visible, "the count shows again on a horizontal bar")) return
+      next()
+    },
+
+    // --- equal counts: the configured order breaks ties --------------------
+    function() {
+      // The QML engine's sort is not stable, so this runs in the real engine:
+      // equal counts must keep the configured order in the popup, and
+      // middle-click must open the first of the equal accounts.
+      var accounts = []
+      for (var i = 0; i < 8; i++) accounts.push(shell.account(shell.work, { id: "tie" + i, name: "Tie " + i, appId: "teams-tie" + i }))
+      if (!reset("equal counts", { accounts: accounts, unreadFirst: true })) return
+      shell.picked = ""
+      Plugin.TeamsService.windows = shell.tieWindows(-1)
+      var order = one.displayed.map(function(a) { return a.id }).join(",")
+      if (!check(order === "tie0,tie1,tie2,tie3,tie4,tie5,tie6,tie7", "equal counts keep the configured order: " + order)) return
+      shell.find(one, "teamsButton").triggerPress(Qt.MiddleButton)
+      if (!check(shell.picked === "tie0", "middle-click at equal counts opens the first account: " + shell.picked)) return
+      Plugin.TeamsService.windows = shell.tieWindows(6)
+      order = one.displayed.map(function(a) { return a.id }).join(",")
+      if (!check(order === "tie6,tie0,tie1,tie2,tie3,tie4,tie5,tie7", "a higher count moves up, the rest keep their order: " + order)) return
       next()
     },
 

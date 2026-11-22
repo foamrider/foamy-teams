@@ -80,6 +80,20 @@ test('the accounts setting hands accountError to the kit, and a bad stored list 
   assert.equal(JSON.stringify(Prefs.value(F, { accounts: [null] }, 'accounts')), '[]')
 })
 
+test('configurationError names an invalid stored list only; a missing or null list is no error, as in the kit', () => {
+  for (const [name, settings, message] of [
+    ['no settings', undefined, ''],
+    ['no accounts key', {}, ''],
+    ['a null list', { accounts: null }, ''],
+    ['a valid list', { accounts: definitions }, ''],
+    ['an object', { accounts: {} }, 'Use at most 32 accounts.'],
+    ['a null account', { accounts: [null] }, 'Invalid account.'],
+  ]) {
+    assert.equal(P.configurationError(settings), message, name)
+    assert.equal(P.configurationError(settings) === '', Prefs.storedProblem(F, settings, 'accounts') === '', name + ': agrees with the kit')
+  }
+})
+
 test('a Teams title gives the unread count and the context; other titles give an unknown count', () => {
   assert.deepEqual(M.titleState('(12) Chat | Team | Microsoft Teams'), { unread: 12, context: 'Chat | Team' })
   assert.equal(M.titleState('Chat | Microsoft Teams').unread, 0)
@@ -87,6 +101,13 @@ test('a Teams title gives the unread count and the context; other titles give an
     assert.equal(M.titleState(title).unread, null, title)
   for (const [title, context] of [['Chat   |   Microsoft Teams', 'Chat'], ['(2)  A | B |Microsoft Teams  ', 'A | B'], ['Chat |', 'Chat |'], ['| Microsoft Teams', ''], ['Chat' + ' '.repeat(10) + '| Microsoft Teams', 'Chat']])
     assert.equal(M.titleState(title).context, context, title)
+})
+
+test('a sign-in page is told apart by whole words, so a chat name that only contains the letters keeps its count', () => {
+  for (const title of ['Sign in | Microsoft Teams', 'Sign-in | Microsoft Teams', 'Signin | Microsoft Teams', 'Log in | Microsoft Teams', 'Login | Microsoft Teams', 'Microsoft Teams - sign in to your account'])
+    assert.equal(M.titleState(title).unread, null, title)
+  for (const [title, unread] of [['(5) Designing the UI | Microsoft Teams', 5], ['(1) Assigning tasks | Microsoft Teams', 1], ['(4) Blog index | Microsoft Teams', 4], ['Designing | Microsoft Teams', 0]])
+    assert.equal(M.titleState(title).unread, unread, title)
 })
 
 test('titleState stays linear on a long run of spaces', () => {
@@ -127,6 +148,7 @@ test('middle-click picks the preferred account, else the most unread, then focus
     ['no preferred id gives the most unread', [row('less', 1, true), row('more', 5, true)], '', 'more'],
     ['at equal unread a focused account beats a running one', [row('running', 2, true), row('focused', 2, true, true)], '', 'focused'],
     ['at equal unread a running account beats a closed one', [row('closed', null, false), row('running', 0, true)], '', 'running'],
+    ['at a full tie the first configured account wins', [row('first', 1, true), row('second', 1, true), row('third', 1, true)], '', 'first'],
   ]
   for (const [name, accounts, preferred, expected] of rows) assert.equal(M.primaryAccount(accounts, preferred).id, expected, name)
   assert.equal(M.primaryAccount([], ''), null)

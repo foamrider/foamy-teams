@@ -28,28 +28,49 @@ test('each English key has its own text and a Norwegian entry with the same plac
   }
 })
 
+// The first argument of the call whose "(" is at `open`: the source up to the
+// "," or ")" at depth 0, skipping string literals.
+function firstArgument(source, open) {
+  let depth = 0
+  for (let i = open + 1; i < source.length; i++) {
+    const c = source[i]
+    if (c === '"' || c === "'") {
+      for (i++; i < source.length && source[i] !== c; i++) if (source[i] === '\\') i++
+    } else if ('([{'.includes(c)) depth++
+    else if (')]}'.includes(c)) {
+      if (depth === 0) return source.slice(open + 1, i)
+      depth--
+    } else if (c === ',' && depth === 0) return source.slice(open + 1, i)
+  }
+  return ''
+}
+
 // A static scan of the plugin's QML and JavaScript: the catalogs are the
 // thing checked. It finds
-// - a literal right after tr(, FoamyI18n.t( or FoamyI18n.tn(, or after
-//   `label:` (toggle models translated later);
+// - every literal in the first argument of tr(, FoamyI18n.t( or
+//   FoamyI18n.tn(, also each branch of a choice such as
+//   tr(enabled ? "Enabled" : "Disabled");
+// - a literal after `label:` (toggle models translated later);
 // - every message: a double-quoted literal that starts with a capital letter
 //   and ends with "." or "…". Messages often reach tr() through a variable
 //   (Preferences.accountError, TeamsService.launchError), which the first
 //   rule cannot see.
 function shownStrings() {
   const found = new Set()
+  const literals = /"((?:[^"\\\n]|\\.)*)"/g
   for (const file of fs.readdirSync(root).filter(f => /\.(qml|js)$/.test(f))) {
     const source = fs.readFileSync(path.join(root, file), 'utf8').split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n')
-    for (const m of source.matchAll(/(?:(?:\btr|FoamyI18n\.tn?)\(\s*|\blabel:\s*)"((?:[^"\\]|\\.)*)"/g)) found.add(JSON.parse(`"${m[1]}"`))
+    for (const m of source.matchAll(/(?:\btr|FoamyI18n\.tn?)\(/g))
+      for (const literal of firstArgument(source, m.index + m[0].length - 1).matchAll(literals)) found.add(JSON.parse(`"${literal[1]}"`))
+    for (const m of source.matchAll(/\blabel:\s*"((?:[^"\\]|\\.)*)"/g)) found.add(JSON.parse(`"${m[1]}"`))
     // Filter the raw text first, so an escape such as "\0" never reaches JSON.parse.
-    for (const m of source.matchAll(/"((?:[^"\\\n]|\\.)*)"/g)) if (/^[A-Z].*[.…]$/s.test(m[1])) found.add(JSON.parse(`"${m[1]}"`))
+    for (const m of source.matchAll(literals)) if (/^[A-Z].*[.…]$/s.test(m[1])) found.add(JSON.parse(`"${m[1]}"`))
   }
   return found
 }
 
 test('every string the plugin can show has an English and a Norwegian entry', () => {
-  for (const key of shownStrings()) {
-    assert.ok(Object.hasOwn(en, key), `English catalog entry for ${key}`)
-    assert.ok(Object.hasOwn(no, key), `Norwegian catalog entry for ${key}`)
-  }
+  const shown = [...shownStrings()]
+  assert.deepEqual(shown.filter(key => !Object.hasOwn(en, key)), [], 'shown strings without an English entry')
+  assert.deepEqual(shown.filter(key => !Object.hasOwn(no, key)), [], 'shown strings without a Norwegian entry')
 })
