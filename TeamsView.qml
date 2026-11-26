@@ -31,6 +31,9 @@ PanelKeyCatcher {
   property string settingsError: ""
   property bool accountsLocked: false
   property bool retryable: false
+  // The Panel's FoamyPrefsQueue, which the settings dropdowns are linked to
+  // (none in the preview).
+  property FoamyPrefsQueue queue: null
 
   signal activate(var account)
   signal settingsRequested
@@ -325,6 +328,7 @@ PanelKeyCatcher {
     settings: root.settings
     candidates: root.candidates
     saving: root.saving
+    queue: root.queue
     panelError: root.settingsError
     accountsLocked: root.accountsLocked
     // Retry runs the panel's failed save again (a removal, too): it shows

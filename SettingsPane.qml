@@ -25,6 +25,10 @@ FoamySettingsPage {
   // The stored account list is invalid (see Panel.accountsProblem): no
   // account edits until shell.json is fixed.
   property bool accountsLocked: false
+  // The FoamyPrefsQueue the options save through (none in the preview). The
+  // dropdowns are linked to it and their key: a pick it refuses gives way
+  // at once, so the saved choice shows beside the error.
+  property FoamyPrefsQueue queue: null
   readonly property var definitions: pref("accounts")
 
   signal save(string key, var value)
@@ -270,6 +274,8 @@ FoamySettingsPage {
       label: root.tr("When all accounts are closed")
       // Keep the existing boolean so saved Hide choices still apply.
       value: root.pref("hideWhenClosed") ? "hide" : "mute"
+      queue: root.queue
+      queueKey: "hideWhenClosed"
       options: [
         {
           value: "mute",
@@ -292,6 +298,8 @@ FoamySettingsPage {
       value: root.definitions.some(function (a) {
         return a.enabled && a.id === root.pref("defaultAccount")
       }) ? root.pref("defaultAccount") : ""
+      queue: root.queue
+      queueKey: "defaultAccount"
       options: [
         {
           value: "",

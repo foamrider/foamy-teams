@@ -1,3 +1,6 @@
+// The popup body is created in this file's context and reads its ids (root,
+// prefs): bound, so qmllint checks those reads.
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 import qs.Commons as Commons
@@ -211,6 +214,7 @@ Panel {
         settings: root.preferences
         candidates: TeamsService.candidates
         saving: root.saving
+        queue: prefs
         settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in shell.json to edit the account list.") : root.configurationError ? root.tr(root.configurationError) : ""
         accountsLocked: root.accountsProblem !== ""
         retryable: prefs.canRetry

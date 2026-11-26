@@ -4,7 +4,8 @@ lazy popup body, the Settings page and its account editor, the keys after the
 editor closes on a focused field, saves (inline and a failed `omarchy bar set`
 with Retry), a failed paste in the editor and the error of a Save or Remove
 after it, with Retry only beside a failed save (in Norwegian), the closed
-modes, the status heading, clicks and keys, launches (failed, refused, timed
+modes, settings dropdown picks the queue refuses (no bar entry), the status
+heading, clicks and keys, launches (failed, refused, timed
 out), the window tracker (a title that keeps changing; only the windows of
 configured accounts are read, from a test model of windows), the bar count,
 the account order at equal counts, plain-text rendering of page-controlled
@@ -318,6 +319,34 @@ ShellRoot {
       if (!check(two.visible && two.configurationError !== "", "invalid configuration remains reachable")) return
       two.settings = { accounts: [], hideWhenClosed: true }
       if (!check(two.visible, "initial setup remains reachable")) return
+      next()
+    },
+
+    // --- refused picks: a dropdown shows the saved choice again at once ---
+    function() {
+      if (!reset("refused picks", { accounts: [shell.work, shell.home], defaultAccount: "work" })) return
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "closedMode") !== null }, 5000, "Settings opens")
+    },
+    function() {
+      // The host's moduleName is "" while the widget's bar entry is gone,
+      // and the queue then refuses every save at once. Each settings
+      // dropdown must show the saved choice beside the error, not the
+      // refused pick for its 10 s pick hold.
+      var page = shell.page()
+      one.moduleName = ""
+      for (var row of [["closedMode", "hide", "mute"], ["defaultAccount", "home", "work"]]) {
+        var choice = shell.find(one.popup.bodyItem, row[0])
+        choice.select(row[1])
+        if (!check(choice.shownValue === row[2] && page.error === one.tr("Settings can't be saved: this widget has no bar entry.") && shell.calls.length === 0,
+                   row[0] + ": a refused pick of " + row[1] + " shows the saved " + row[2] + " again at once: " + JSON.stringify([choice.shownValue, page.error, shell.calls.length]))) return
+      }
+      // With the entry back, the next pick saves and the error goes.
+      one.moduleName = "foamy.teams"
+      var mode = shell.find(one.popup.bodyItem, "closedMode")
+      mode.select("hide")
+      if (!check(mode.shownValue === "hide" && page.error === "" && shell.calls.length === 1, "with the bar entry back, the pick saves: " + JSON.stringify([mode.shownValue, page.error, shell.calls.length]))) return
       next()
     },
 
