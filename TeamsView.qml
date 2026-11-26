@@ -58,9 +58,10 @@ PanelKeyCatcher {
     settingsPane.resetScroll()
     settingsPane.focusBack()
   }
+  // FoamyPopup gives the keys the settings page had back to this view (the
+  // body's key home) when the page hides, after Back or the reset on close.
   function settingsClosed() {
     list.contentY = 0
-    root.forceActiveFocus()
   }
   function saved(key) {
     settingsPane.saved(key)

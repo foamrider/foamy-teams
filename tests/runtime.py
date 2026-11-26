@@ -1,7 +1,8 @@
 """Load the real Panel.qml twice (two monitors) in an isolated offscreen shell
 on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
 lazy popup body, the Settings page and its account editor, the keys after the
-editor closes on a focused field, saves (inline and a failed `omarchy bar set`
+editor closes on a focused field and after the popup closes on Settings and
+opens again (real Esc), saves (inline and a failed `omarchy bar set`
 with Retry), a failed paste in the editor and the error of a Save or Remove
 after it, with Retry only beside a failed save (in Norwegian), the closed
 modes, settings dropdown picks the queue refuses (no bar entry), the status
@@ -655,6 +656,25 @@ ShellRoot {
     function() {
       ev.keyClick(Qt.Key_Escape, Qt.NoModifier, -1)
       expect(function() { return !one.opened }, 5000, "Esc on the account list closes the popup", shell.focusName)
+    },
+    function() {
+      // Settings again, with the keys on its Back, and the popup closes on
+      // it. Opened again on the list, the first Esc must close it: were the
+      // keys still on the hidden page, Esc would go to its Back instead.
+      one.openSettings()
+      expect(function() { return one.opened && one.editingSettings && shell.page().backTarget.activeFocus }, 5000, "Settings opens with the keys on Back", shell.focusName)
+    },
+    function() {
+      one.close()
+      expect(function() { return !one.opened && !one.editingSettings }, 5000, "the popup closes on Settings")
+    },
+    function() {
+      one.open()
+      expect(function() { return one.opened && !one.editingSettings }, 5000, "the popup opens again on the list")
+    },
+    function() {
+      ev.keyClick(Qt.Key_Escape, Qt.NoModifier, -1)
+      expect(function() { return !one.opened }, 5000, "Esc closes the popup that closed on Settings and opened again", shell.focusName)
     },
 
     // --- paste errors: a failed paste says why, in the page's language ----
