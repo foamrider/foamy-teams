@@ -211,9 +211,10 @@ ShellRoot {
     },
     function() {
       // Dropdowns stay bound after a pick (kit 0.2.0 no longer assigns value).
+      // select() picks as the dropdown's list does.
       var pick = shell.find(one.popup.bodyItem, "defaultAccount")
       if (!check(pick.compact, "middle-click account uses the settings row form")) return
-      pick.changed("work")
+      pick.select("work")
       if (!check(pick.value === "work", "middle-click dropdown follows the saved value, got " + pick.value)) return
       if (!check(shell.calls.length === 1 && shell.calls[0].settings.defaultAccount === "work", "the pick saves the middle-click account: " + JSON.stringify(shell.calls))) return
       one.popup.bodyItem.editAccount(shell.work)
@@ -221,7 +222,7 @@ ShellRoot {
     },
     function() {
       var picker = shell.find(one.popup.bodyItem, "appIdPicker")
-      picker.changed("teams-other")
+      picker.select("teams-other")
       if (!check(picker.value === "teams-other", "picker shows the chosen window, got " + picker.value)) return
       one.popup.bodyItem.editAccount(shell.work)   // reopen the editor: draft resets
       if (!check(picker.value === "teams-work", "picker follows the draft after reopening, got " + picker.value)) return
@@ -281,7 +282,7 @@ ShellRoot {
     function() {
       var mode = shell.find(one.popup.bodyItem, "closedMode")
       if (!check(mode.visible && mode.value === "mute", "closed mode defaults to Dim")) return
-      mode.changed("hide")
+      mode.select("hide")
       if (!check(mode.value === "hide" && one.preference("hideWhenClosed"), "Hide saves the existing preference")) return
       shell.reflect(one)
       if (!check(one.visible, "open settings stay reachable in Hide mode")) return
@@ -305,7 +306,7 @@ ShellRoot {
     },
     function() {
       var mode = shell.find(one.popup.bodyItem, "closedMode")
-      mode.changed("mute")
+      mode.select("mute")
       if (!check(mode.value === "mute" && !one.preference("hideWhenClosed"), "Dim selection stays bound to saved preference")) return
       shell.reflect(one)
       one.closeSettings(); one.close()
