@@ -31,6 +31,9 @@ PanelKeyCatcher {
   property string settingsError: ""
   property bool accountsLocked: false
   property bool retryable: false
+  // The Panel's FoamyPrefsQueue, which the settings dropdowns are linked to
+  // (none in the preview).
+  property FoamyPrefsQueue queue: null
 
   signal activate(var account)
   signal settingsRequested
@@ -55,9 +58,10 @@ PanelKeyCatcher {
     settingsPane.resetScroll()
     settingsPane.focusBack()
   }
+  // FoamyPopup gives the keys the settings page had back to this view (the
+  // body's key home) when the page hides, after Back or the reset on close.
   function settingsClosed() {
     list.contentY = 0
-    root.forceActiveFocus()
   }
   function saved(key) {
     settingsPane.saved(key)
@@ -325,6 +329,7 @@ PanelKeyCatcher {
     settings: root.settings
     candidates: root.candidates
     saving: root.saving
+    queue: root.queue
     panelError: root.settingsError
     accountsLocked: root.accountsLocked
     // Retry runs the panel's failed save again (a removal, too): it shows

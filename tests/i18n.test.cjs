@@ -45,8 +45,23 @@ function firstArgument(source, open) {
   return ''
 }
 
-// A static scan of the plugin's QML and JavaScript: the catalogs are the
-// thing checked. It finds
+// The texts that the kit components this plugin carries hand it to
+// translate: kit/i18n-texts.json (synced from foamy-kit) for the components
+// on the components line of foamy-kit.lock, as check.sh reads them. They
+// reach tr() through a variable (SafeTextField.pasteError,
+// FoamyPrefsQueue.error), which the scan below cannot follow.
+function kitTexts() {
+  const lock = fs.readFileSync(path.join(root, 'foamy-kit.lock'), 'utf8').split('\n')
+  const line = lock.find(l => l.startsWith('components '))
+  assert.ok(line, 'foamy-kit.lock names the kit components')
+  const carried = new Set(line.slice('components '.length).split(','))
+  const listed = require('../kit/i18n-texts.json')
+  for (const entry of listed) assert.ok(typeof entry.component === 'string' && text(entry.text), `kit/i18n-texts.json entry ${JSON.stringify(entry)}`)
+  return listed.filter(entry => carried.has(entry.component)).map(entry => entry.text)
+}
+
+// The kit's texts (above) and a static scan of the plugin's QML and
+// JavaScript: the catalogs are the thing checked. The scan finds
 // - every literal in the first argument of tr(, FoamyI18n.t( or
 //   FoamyI18n.tn(, also each branch of a choice such as
 //   tr(enabled ? "Enabled" : "Disabled");
@@ -56,7 +71,7 @@ function firstArgument(source, open) {
 //   (Preferences.accountError, TeamsService.launchError), which the first
 //   rule cannot see.
 function shownStrings() {
-  const found = new Set()
+  const found = new Set(kitTexts())
   const literals = /"((?:[^"\\\n]|\\.)*)"/g
   for (const file of fs.readdirSync(root).filter(f => /\.(qml|js)$/.test(f))) {
     const source = fs.readFileSync(path.join(root, file), 'utf8').split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n')

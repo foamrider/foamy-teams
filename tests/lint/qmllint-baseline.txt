@@ -14,35 +14,6 @@ Panel.qml: missing-property: Member "settingsClosed" not found on type "QQuickIt
 Panel.qml: missing-property: Member "settingsOpened" not found on type "QQuickItem" | popup.bodyItem.settingsOpened()
 Panel.qml: missing-property: Member "urgent" not found on type "QObject" | urgent: root.bar ? root.bar.urgent : Commons.Color.urgent
 Panel.qml: missing-property: Member "vertical" not found on type "QObject" | readonly property bool vertical: bar ? bar.vertical : false
-Panel.qml: unqualified: Unqualified access | accounts: root.displayed
-Panel.qml: unqualified: Unqualified access | accountsLocked: root.accountsProblem !== ""
-Panel.qml: unqualified: Unqualified access | configured: root.definitions.length > 0
-Panel.qml: unqualified: Unqualified access | editingSettings: root.editingSettings
-Panel.qml: unqualified: Unqualified access | error: root.launchError
-Panel.qml: unqualified: Unqualified access | heading: root.heading
-Panel.qml: unqualified: Unqualified access | launchingId: root.launchingId
-Panel.qml: unqualified: Unqualified access | onCloseRequestedByView: root.close()
-Panel.qml: unqualified: Unqualified access | onRetryRequested: prefs.retry()
-Panel.qml: unqualified: Unqualified access | onSettingsBack: root.closeSettings()
-Panel.qml: unqualified: Unqualified access | onSettingsRequested: root.openSettings()
-Panel.qml: unqualified: Unqualified access | retryable: prefs.canRetry
-Panel.qml: unqualified: Unqualified access | root.openAccount(account)
-Panel.qml: unqualified: Unqualified access | root.savePreference(key, value)
-Panel.qml: unqualified: Unqualified access | root.switchPanel(direction)
-Panel.qml: unqualified: Unqualified access | saving: root.saving
-Panel.qml: unqualified: Unqualified access | settings: root.preferences
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | settingsError: prefs.error ? root.tr(prefs.error) : root.accountsProblem ? root.tr(root.accountsProblem) + " " + root.tr("Fix or remove the invalid account in s
-Panel.qml: unqualified: Unqualified access | showContext: root.preference("showContext")
-Panel.qml: unqualified: Unqualified access | summary: root.summary
 SettingsPane.qml: unqualified: Unqualified access | checked: root.pref(modelData.key)
 SettingsPane.qml: unqualified: Unqualified access | enabled: accountRow.index < root.definitions.length - 1
 SettingsPane.qml: unqualified: Unqualified access | label: root.tr(modelData.label)

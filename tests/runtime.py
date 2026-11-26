@@ -1,10 +1,12 @@
 """Load the real Panel.qml twice (two monitors) in an isolated offscreen shell
 on Omarchy 4.5 and run named scenarios through it: IPC through `qs ipc`, the
 lazy popup body, the Settings page and its account editor, the keys after the
-editor closes on a focused field, saves (inline and a failed `omarchy bar set`
+editor closes on a focused field and after the popup closes on Settings and
+opens again (real Esc), saves (inline and a failed `omarchy bar set`
 with Retry), a failed paste in the editor and the error of a Save or Remove
 after it, with Retry only beside a failed save (in Norwegian), the closed
-modes, the status heading, clicks and keys, launches (failed, refused, timed
+modes, settings dropdown picks the queue refuses (no bar entry), the status
+heading, clicks and keys, launches (failed, refused, timed
 out), the window tracker (a title that keeps changing; only the windows of
 configured accounts are read, from a test model of windows), the bar count,
 the account order at equal counts, plain-text rendering of page-controlled
@@ -211,9 +213,10 @@ ShellRoot {
     },
     function() {
       // Dropdowns stay bound after a pick (kit 0.2.0 no longer assigns value).
+      // select() picks as the dropdown's list does.
       var pick = shell.find(one.popup.bodyItem, "defaultAccount")
       if (!check(pick.compact, "middle-click account uses the settings row form")) return
-      pick.changed("work")
+      pick.select("work")
       if (!check(pick.value === "work", "middle-click dropdown follows the saved value, got " + pick.value)) return
       if (!check(shell.calls.length === 1 && shell.calls[0].settings.defaultAccount === "work", "the pick saves the middle-click account: " + JSON.stringify(shell.calls))) return
       one.popup.bodyItem.editAccount(shell.work)
@@ -221,7 +224,7 @@ ShellRoot {
     },
     function() {
       var picker = shell.find(one.popup.bodyItem, "appIdPicker")
-      picker.changed("teams-other")
+      picker.select("teams-other")
       if (!check(picker.value === "teams-other", "picker shows the chosen window, got " + picker.value)) return
       one.popup.bodyItem.editAccount(shell.work)   // reopen the editor: draft resets
       if (!check(picker.value === "teams-work", "picker follows the draft after reopening, got " + picker.value)) return
@@ -281,7 +284,7 @@ ShellRoot {
     function() {
       var mode = shell.find(one.popup.bodyItem, "closedMode")
       if (!check(mode.visible && mode.value === "mute", "closed mode defaults to Dim")) return
-      mode.changed("hide")
+      mode.select("hide")
       if (!check(mode.value === "hide" && one.preference("hideWhenClosed"), "Hide saves the existing preference")) return
       shell.reflect(one)
       if (!check(one.visible, "open settings stay reachable in Hide mode")) return
@@ -305,7 +308,7 @@ ShellRoot {
     },
     function() {
       var mode = shell.find(one.popup.bodyItem, "closedMode")
-      mode.changed("mute")
+      mode.select("mute")
       if (!check(mode.value === "mute" && !one.preference("hideWhenClosed"), "Dim selection stays bound to saved preference")) return
       shell.reflect(one)
       one.closeSettings(); one.close()
@@ -317,6 +320,34 @@ ShellRoot {
       if (!check(two.visible && two.configurationError !== "", "invalid configuration remains reachable")) return
       two.settings = { accounts: [], hideWhenClosed: true }
       if (!check(two.visible, "initial setup remains reachable")) return
+      next()
+    },
+
+    // --- refused picks: a dropdown shows the saved choice again at once ---
+    function() {
+      if (!reset("refused picks", { accounts: [shell.work, shell.home], defaultAccount: "work" })) return
+      one.open()
+      one.openSettings()
+      expect(function() { return one.editingSettings && shell.find(one.popup.bodyItem, "closedMode") !== null }, 5000, "Settings opens")
+    },
+    function() {
+      // The host's moduleName is "" while the widget's bar entry is gone,
+      // and the queue then refuses every save at once. Each settings
+      // dropdown must show the saved choice beside the error, not the
+      // refused pick for its 10 s pick hold.
+      var page = shell.page()
+      one.moduleName = ""
+      for (var row of [["closedMode", "hide", "mute"], ["defaultAccount", "home", "work"]]) {
+        var choice = shell.find(one.popup.bodyItem, row[0])
+        choice.select(row[1])
+        if (!check(choice.shownValue === row[2] && page.error === one.tr("Settings can't be saved: this widget has no bar entry.") && shell.calls.length === 0,
+                   row[0] + ": a refused pick of " + row[1] + " shows the saved " + row[2] + " again at once: " + JSON.stringify([choice.shownValue, page.error, shell.calls.length]))) return
+      }
+      // With the entry back, the next pick saves and the error goes.
+      one.moduleName = "foamy.teams"
+      var mode = shell.find(one.popup.bodyItem, "closedMode")
+      mode.select("hide")
+      if (!check(mode.shownValue === "hide" && page.error === "" && shell.calls.length === 1, "with the bar entry back, the pick saves: " + JSON.stringify([mode.shownValue, page.error, shell.calls.length]))) return
       next()
     },
 
@@ -625,6 +656,25 @@ ShellRoot {
     function() {
       ev.keyClick(Qt.Key_Escape, Qt.NoModifier, -1)
       expect(function() { return !one.opened }, 5000, "Esc on the account list closes the popup", shell.focusName)
+    },
+    function() {
+      // Settings again, with the keys on its Back, and the popup closes on
+      // it. Opened again on the list, the first Esc must close it: were the
+      // keys still on the hidden page, Esc would go to its Back instead.
+      one.openSettings()
+      expect(function() { return one.opened && one.editingSettings && shell.page().backTarget.activeFocus }, 5000, "Settings opens with the keys on Back", shell.focusName)
+    },
+    function() {
+      one.close()
+      expect(function() { return !one.opened && !one.editingSettings }, 5000, "the popup closes on Settings")
+    },
+    function() {
+      one.open()
+      expect(function() { return one.opened && !one.editingSettings }, 5000, "the popup opens again on the list")
+    },
+    function() {
+      ev.keyClick(Qt.Key_Escape, Qt.NoModifier, -1)
+      expect(function() { return !one.opened }, 5000, "Esc closes the popup that closed on Settings and opened again", shell.focusName)
     },
 
     // --- paste errors: a failed paste says why, in the page's language ----
