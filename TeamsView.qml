@@ -154,6 +154,7 @@ PanelKeyCatcher {
         title: "Microsoft Teams"
         meta: root.heading
         settingsHasCursor: cursor.at(root.settingsStop)
+        cursorByKeys: cursor.byKeys
         onSettingsClicked: root.settingsRequested()
         onSettingsHovered: function (hovered) {
           if (hovered)
@@ -224,7 +225,12 @@ PanelKeyCatcher {
           hasCursor: cursor.at(index)
           byKeys: cursor.byKeys
           onHovered: cursor.hover(index)
-          onClicked: root.activate(modelData)
+          // A click without a move first (the pointer resting where the
+          // keys left the cursor elsewhere) takes the cursor here too.
+          onClicked: {
+            cursor.hover(index)
+            root.activate(modelData)
+          }
           Accessible.role: Accessible.Button
           Accessible.name: modelData.name + (statusText ? ", " + statusText : "") + ", " + actionText
           Accessible.onPressAction: root.activate(modelData)
