@@ -231,10 +231,12 @@ PanelKeyCatcher {
 
             // Running marker: theme green when the account has a window.
             Rectangle {
+              objectName: "runningMarker"
               Layout.preferredWidth: Style.space(3)
               Layout.preferredHeight: Style.space(26)
               radius: FoamyStyle.pillRadius(width)
-              color: row.modelData.running ? FoamyPalette.onSurface(FoamyPalette.success) : FoamyPalette.divider
+              // Measured on the row's cursor fill, its strongest surface.
+              color: row.modelData.running ? FoamyPalette.onSurface(FoamyPalette.success, Qt.tint(FoamyPalette.background, row.fill)) : FoamyPalette.divider
             }
             ColumnLayout {
               Layout.fillWidth: true

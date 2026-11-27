@@ -891,10 +891,18 @@ ShellRoot {
       next()
     },
 
-    // --- dim red theme: status text reads where the raw red does not -------
+    // --- status colours: they read on what they are drawn on --------------
     function() {
-      if (!reset("dim red theme", { accounts: [shell.work] })) return
+      if (!reset("status colours", { accounts: [shell.work] })) return
+      // Only the run's own theme copy in its temporary HOME may be written.
+      var home = Quickshell.env("HOME")
+      if (!check(home === Quickshell.env("FOAMY_OUT").replace(/\/out$/, "/home") && themeFile.path.indexOf(home + "/") === 0,
+                 "the theme file is in the run's temporary HOME (" + themeFile.path + ", HOME " + home + ")")) return
+      themeFile.reload()
       shell.savedTheme = themeFile.text()
+      shell.savedColours = shell.colours()
+      if (!check(shell.savedTheme !== "" && dimRed.text() !== "" && lightToml.text() !== "",
+                 "the theme files are read (" + themeFile.path + ", " + dimRed.path + ", " + lightToml.path + ")")) return
       shell.applyTheme(dimRed.text())
       Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "(3) Chat | Microsoft Teams", fakeWindow)]
       Plugin.TeamsService.launchError = "Could not launch the account. Check its browser or launch arguments."
@@ -906,23 +914,42 @@ ShellRoot {
       }, 5000, "the popup shows the launch error and the unread badge in the dim red theme")
     },
     function() {
-      var palette = Kit.FoamyPalette
       var body = one.popup.bodyItem
-      var error = shell.findText(body, one.launchError)
+      var card = one.popup.cardItem.color
       var row = shell.find(body, "account:work")
       var count = shell.findText(row, "3")
-      // The badge over the row's cursor fill: the strongest surface the count lies on.
-  var under = Qt.tint(Qt.tint(palette.background, row.fill), count.parent.color)
-      var raw = Commons.Color.urgent
-      if (!check(palette.contrastRatio(raw, palette.background) < 4.5 && palette.contrastRatio(error.color, palette.background) >= 4.5,
-                 "the launch error reads on the popup: " + error.color + " " + palette.contrastRatio(error.color, palette.background).toFixed(2) + ":1")) return
-      if (!check(palette.contrastRatio(raw, under) < 4.5 && palette.contrastRatio(count.color, under) >= 4.5,
-                 "the unread count reads on its badge under the cursor: " + count.color + " " + palette.contrastRatio(count.color, under).toFixed(2) + ":1 on " + under)) return
+      if (!shell.readsOn("the launch error", shell.findText(body, one.launchError), card, Commons.Color.urgent)) return
+      if (!check(!row.hasCursor, "the cursor is off the account's row")) return
+      if (!shell.readsOn("the unread count at rest", count, Qt.tint(Qt.tint(card, row.color), count.parent.color), Commons.Color.urgent)) return
+      shell.countAtRest = count.color
+      body.moveRequested(0, 1)
+      expect(function() { return row.hasCursor }, 5000, "the cursor is on the account's row")
+    },
+    function() {
+      var card = one.popup.cardItem.color
+      var row = shell.find(one.popup.bodyItem, "account:work")
+      var count = shell.findText(row, "3")
+      if (!shell.readsOn("the unread count under the cursor", count, Qt.tint(Qt.tint(card, row.color), count.parent.color), Commons.Color.urgent)) return
+      if (!check(Qt.colorEqual(count.color, shell.countAtRest), "the unread count keeps its colour under the cursor (" + shell.countAtRest + ", then " + count.color + ")")) return
+      // A light theme, whose green must darken.
+      shell.applyTheme(lightToml.text())
+      expect(function() { return Kit.FoamyPalette.lightTheme && Kit.FoamyPalette.success.toString() === "#40a02b" && Commons.Color.background.toString() === "#eff1f5" },
+             5000, "the light theme was read")
+    },
+    function() {
+      var card = one.popup.cardItem.color
+      var row = shell.find(one.popup.bodyItem, "account:work")
+      if (!check(row.hasCursor, "the cursor is still on the account's row")) return
+      if (!shell.readsOn("the running marker under the cursor", shell.find(row, "runningMarker"), Qt.tint(card, row.color), Kit.FoamyPalette.onSurface(Kit.FoamyPalette.success))) return
       one.close()
       shell.applyTheme(shell.savedTheme)
-      // FoamyPalette reads the restored file later: wait for it, so it is
-      // not read while the shell quits.
-      expect(function() { return Kit.FoamyPalette.error.toString() !== "#a54242" }, 5000, "the theme before is read again")
+      expect(function() { return shell.colours() === shell.savedColours }, 5000, "the theme before the switch is read again",
+             function() { return shell.colours() + "; before " + shell.savedColours })
+    },
+    function() {
+      themeFile.reload()
+      if (!check(themeFile.text() === shell.savedTheme, "the theme file is back as it was")) return
+      next()
     },
 
     // --- createObject settings --------------------------------------------
@@ -1045,11 +1072,31 @@ ShellRoot {
   // What the next paste reads (the kit's wl-paste stand-in), and Omarchy's language.
   FileView { id: clipboardMode; path: Quickshell.env("TEST_CLIPBOARD_STATE"); blockWrites: true; printErrors: false }
   FileView { id: language; path: Quickshell.env("OMARCHY_LANGUAGE_FILE"); blockWrites: true; printErrors: false }
-  // The theme's colors.toml, and the kit's dark theme with a dim red
-  // (2.70:1 on its background) that the "dim red theme" scenario switches to.
-  FileView { id: themeFile; path: Kit.FoamyPalette.themePath; blockLoading: true; blockWrites: true; printErrors: false }
+  // The theme's colors.toml, and the themes the "status colours" scenario
+  // switches to: the kit's dark theme with a dim red (2.70:1 on its
+  // background) and its light theme.
+  FileView { id: themeFile; path: Kit.FoamyPalette.themePath; blockAllReads: true; blockWrites: true; printErrors: false }
   FileView { id: dimRed; path: Quickshell.env("FOAMY_DIM_RED"); blockLoading: true; printErrors: false }
+  FileView { id: lightToml; path: Quickshell.env("FOAMY_LIGHT"); blockLoading: true; printErrors: false }
+  // The theme before the switch: the file's text and its colours.
   property string savedTheme: ""
+  property string savedColours: ""
+  // The unread count's colour with the cursor off its row.
+  property color countAtRest: "transparent"
+  function colours() {
+    return [Commons.Color.background, Commons.Color.foreground, Commons.Color.accent, Commons.Color.urgent,
+            Kit.FoamyPalette.background, Kit.FoamyPalette.error, Kit.FoamyPalette.success, Kit.FoamyPalette.lightTheme].map(String).join()
+  }
+  // `item` (a text or a thin mark) shows, and reads at 4.5:1 on `surface`,
+  // the opaque colour drawn under it; `old`, its colour before the change,
+  // does not (else the theme proves nothing).
+  function readsOn(name, item, surface, old) {
+    if (!check(item && item.visible, name + " shows")) return false
+    var before = Kit.FoamyPalette.contrastRatio(old, surface)
+    if (!check(before < 4.5, "the theme makes " + name + " fail in its old colour (" + old + " " + before.toFixed(2) + ":1 on " + surface + ")")) return false
+    var drawn = Kit.FoamyPalette.contrastRatio(item.color, surface)
+    return check(drawn >= 4.5, name + " reads at 4.5:1 on what it is drawn on (" + item.color + " " + drawn.toFixed(2) + ":1 on " + surface + ")")
+  }
   // Switches the theme as the host's applyTheme does: its colours, then the
   // theme's file that FoamyPalette watches.
   function applyTheme(raw) {
@@ -1090,6 +1137,7 @@ def run():
     (stub / "foamy-teams-fake-client").chmod(0o755)
     r.env["FOAMY_CLIENT_LOG"] = str(r.base / "client.log")
     r.env["FOAMY_DIM_RED"] = str(kit / "tests/fixtures/themes/dim-red.toml")
+    r.env["FOAMY_LIGHT"] = str(kit / "preview/themes/light.toml")
     # Paste runs kit/clipboard.sh against the kit's wl-paste stand-in, never the real clipboard.
     r.env.update(harness.hostenv.clipboard_fakes(r.base / "clipboard", env=r.env))
     r.run(timeout=60)
