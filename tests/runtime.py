@@ -58,6 +58,20 @@ ShellRoot {
   property var calls: []
   property bool inline: true
   function fail(message) { console.log("FOAMY FAIL " + (scenario ? scenario + ": " : "") + message); Qt.quit() }
+  // The objectNames of the items under `item` that draw the keys' cursor
+  // (FoamyCursor.byKeys): a cursor surface with its 1 px accent border, a kit
+  // action (the band's Settings: "settings") with its border.
+  function keysBorders(item) {
+    var found = []
+    ;(function walk(node) {
+      var surface = node.borderSpec !== undefined && node.byKeys && node.borderTop > 0 && Qt.colorEqual(node.borderSpec.color, node.accent)
+      var action = node.cursorByKeys !== undefined && node.border !== undefined && node.border.width > 0
+      if (node.hasCursor !== undefined && node.visible && node.hasCursor && (surface || action))
+        found.push(node.objectName || (node.settings === true ? "settings" : "?"))
+      for (var i = 0; i < node.children.length; i++) walk(node.children[i])
+    })(item)
+    return found
+  }
   function check(condition, message) { if (!condition) fail(message); return condition }
 
   FloatingWindow {
@@ -417,10 +431,46 @@ ShellRoot {
     },
     function() {
       var view = one.popup.bodyItem
+      // A key puts the keys' border on the row with the cursor only, and the
+      // pointer takes it away.
       view.moveRequested(0, 1)
+      if (!check(shell.keysBorders(view).join() === "account:work", "↓: the keys' border on the first account (" + shell.keysBorders(view) + ")")) return
+      var home = shell.find(view, "account:home")
+      ev.mouseMove(home, home.width / 2, home.height / 2, -1, Qt.NoButton, Qt.NoModifier)
+      if (!check(home.hasCursor && shell.keysBorders(view).length === 0, "the pointer on the second account: the cursor there, no keys' border (" + shell.keysBorders(view) + ")")) return
+      // The pointer off the rows, the cursor back on the first by the keys.
+      ev.mouseMove(view, 4, 4, -1, Qt.NoButton, Qt.NoModifier)
+      view.moveRequested(0, -1)
       view.moveRequested(0, 1)
+      if (!check(shell.keysBorders(view).join() === "account:home", "↓ again: the keys' border on the second account (" + shell.keysBorders(view) + ")")) return
+      // On to the band's Settings: its button has the keys' border; back on the account.
+      view.moveRequested(0, 1)
+      if (!check(shell.keysBorders(view).join() === "settings", "↓ onto Settings: the keys' border on the band's button (" + shell.keysBorders(view) + ")")) return
+      view.moveRequested(0, -1)
       view.activateRequested()
       if (!check(fakeHome.activations === 2 && fakeWindow.activations === 1 && !one.opened, "the keys move to the second account and focus it: " + JSON.stringify([fakeWindow.activations, fakeHome.activations, one.opened]))) return
+      one.open()
+      expect(function() { return one.opened }, 5000, "the popup opens again after Enter")
+    },
+    function() {
+      var view = one.popup.bodyItem
+      // Closed by Enter with the keys' border on an account: opened again, none.
+      if (!check(shell.keysBorders(view).length === 0, "opened again: no keys' border (" + shell.keysBorders(view) + ")")) return
+      // The keys come back to the row the pointer rests in: a move inside it takes the cursor back.
+      var home = shell.find(view, "account:home")
+      ev.mouseMove(home, home.width / 2, home.height / 2, -1, Qt.NoButton, Qt.NoModifier)
+      view.moveRequested(0, -1)
+      view.moveRequested(0, 1)
+      if (!check(shell.keysBorders(view).join() === "account:home", "the keys back on the account under the pointer: their border (" + shell.keysBorders(view) + ")")) return
+      ev.mouseMove(home, home.width / 2 + 3, home.height / 2, -1, Qt.NoButton, Qt.NoModifier)
+      if (!check(home.hasCursor && shell.keysBorders(view).length === 0, "a pointer move inside the account: no keys' border (" + shell.keysBorders(view) + ")")) return
+      // The keys to the other account, then a click where the pointer rests: the cursor follows the click.
+      view.moveRequested(0, -1)
+      ev.mouseClick(home, home.width / 2 + 3, home.height / 2, Qt.LeftButton, Qt.NoModifier, -1)
+      // The body lives on while closed: the rows keep what they draw.
+      if (!check(home.hasCursor && !home.byKeys && fakeHome.activations === 3 && !one.opened,
+                 "a click without a move: the cursor on the clicked account, the pointer's (" + JSON.stringify([home.hasCursor, home.byKeys, fakeHome.activations, one.opened]) + ")")) return
+      ev.mouseMove(view, 4, 4, -1, Qt.NoButton, Qt.NoModifier)
       one.open()
       expect(function() { return one.opened }, 5000, "the popup opens for the shortcut keys")
     },
