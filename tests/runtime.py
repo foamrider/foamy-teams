@@ -58,6 +58,17 @@ ShellRoot {
   property var calls: []
   property bool inline: true
   function fail(message) { console.log("FOAMY FAIL " + (scenario ? scenario + ": " : "") + message); Qt.quit() }
+  // The objectNames of the cursor surfaces under `item` that draw the keys'
+  // cursor (FoamyCursor.byKeys): the cursor with a 1 px accent border.
+  function keysBorders(item) {
+    var found = []
+    ;(function walk(node) {
+      if (node.borderSpec !== undefined && node.hasCursor !== undefined && node.visible && node.hasCursor && node.byKeys && node.borderTop > 0 && Qt.colorEqual(node.borderSpec.color, node.accent))
+        found.push(node.objectName || "?")
+      for (var i = 0; i < node.children.length; i++) walk(node.children[i])
+    })(item)
+    return found
+  }
   function check(condition, message) { if (!condition) fail(message); return condition }
 
   FloatingWindow {
@@ -417,8 +428,19 @@ ShellRoot {
     },
     function() {
       var view = one.popup.bodyItem
+      // Opened: no keys' border until a key moves the cursor; then on the
+      // row with the cursor only, and the pointer takes it away.
+      if (!check(shell.keysBorders(view).length === 0, "opened: no keys' border (" + shell.keysBorders(view) + ")")) return
       view.moveRequested(0, 1)
+      if (!check(shell.keysBorders(view).join() === "account:work", "↓: the keys' border on the first account (" + shell.keysBorders(view) + ")")) return
+      var home = shell.find(view, "account:home")
+      ev.mouseMove(home, home.width / 2, home.height / 2, -1, Qt.NoButton, Qt.NoModifier)
+      if (!check(home.hasCursor && shell.keysBorders(view).length === 0, "the pointer on the second account: the cursor there, no keys' border (" + shell.keysBorders(view) + ")")) return
+      // The pointer off the rows, the cursor back on the first by the keys.
+      ev.mouseMove(view, 4, 4, -1, Qt.NoButton, Qt.NoModifier)
+      view.moveRequested(0, -1)
       view.moveRequested(0, 1)
+      if (!check(shell.keysBorders(view).join() === "account:home", "↓ again: the keys' border on the second account (" + shell.keysBorders(view) + ")")) return
       view.activateRequested()
       if (!check(fakeHome.activations === 2 && fakeWindow.activations === 1 && !one.opened, "the keys move to the second account and focus it: " + JSON.stringify([fakeWindow.activations, fakeHome.activations, one.opened]))) return
       one.open()

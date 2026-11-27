@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
@@ -220,6 +222,7 @@ PanelKeyCatcher {
           height: root.showContext ? Style.space(60) : Style.space(46)
           foreground: FoamyPalette.text
           hasCursor: cursor.at(index)
+          byKeys: cursor.byKeys
           onHovered: cursor.hover(index)
           onClicked: root.activate(modelData)
           Accessible.role: Accessible.Button

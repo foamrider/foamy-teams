@@ -36,15 +36,6 @@ TeamsService.qml: unqualified: Unqualified access | root.refreshCandidates()
 TeamsService.qml: unqualified: Unqualified access | root.rematch()
 TeamsService.qml: unqualified: Unqualified access | root.scheduleUpdate()
 TeamsService.qml: unqualified: Unqualified access | root.scheduleUpdate()
-TeamsView.qml: unqualified: Unqualified access | Accessible.onPressAction: root.activate(modelData)
-TeamsView.qml: unqualified: Unqualified access | hasCursor: cursor.at(index)
-TeamsView.qml: unqualified: Unqualified access | height: root.showContext ? Style.space(60) : Style.space(46)
-TeamsView.qml: unqualified: Unqualified access | onClicked: root.activate(modelData)
-TeamsView.qml: unqualified: Unqualified access | onHovered: cursor.hover(index)
-TeamsView.qml: unqualified: Unqualified access | readonly property bool blocked: root.launchingId !== "" && !launching && !modelData.running
-TeamsView.qml: unqualified: Unqualified access | readonly property bool launching: root.launchingId === modelData.id
-TeamsView.qml: unqualified: Unqualified access | visible: root.showContext
-TeamsView.qml: unqualified: Unqualified access | width: content.width - FoamyStyle.gapLarge * 2
 preview/Preview.qml: missing-property: Member "background" not found on type "QObject" | color: Commons.Color.bar.background
 preview/Preview.qml: missing-property: Member "text" not found on type "QObject" | foreground: Commons.Color.bar.text
 preview/Preview.qml: unqualified: Unqualified access | accounts: preview.empty ? [] : preview.previewState === "launching" ? preview.launchingAccounts : preview.accounts
