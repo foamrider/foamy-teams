@@ -10,8 +10,10 @@ heading, clicks and keys, launches (failed, refused, timed
 out), the window tracker (a title that keeps changing; only the windows of
 configured accounts are read, from a test model of windows), the bar count,
 the account order at equal counts, plain-text rendering of page-controlled
-text and preview/Preview.qml's editor state, walked as the kit's render
-harness does.
+text, status colours (the launch error, the unread count and the running
+marker read at 4.5:1 on what they are drawn on, at rest and under the
+cursor, in a dark theme with a dim red and a light theme) and
+preview/Preview.qml's editor state, walked as the kit's render harness does.
 
   python3 tests/runtime.py
 
@@ -19,6 +21,8 @@ Runs on the installed /usr/share/omarchy/shell, or the tree in FOAMY_HOST_45.
 
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
+status colours scenario switches themes by writing the theme file in that
+temp HOME (it refuses any other path) and writes the saved text back. The
 `omarchy` and `omarchy-shell` CLIs are stubs that log their arguments and fail
 one call when a scenario asks for it; the Teams client is a stub that logs its
 arguments; a paste reads the kit's wl-paste stand-in (hostenv.clipboard_fakes).
@@ -940,7 +944,20 @@ ShellRoot {
       var card = one.popup.cardItem.color
       var row = shell.find(one.popup.bodyItem, "account:work")
       if (!check(row.hasCursor, "the cursor is still on the account's row")) return
-      if (!shell.readsOn("the running marker under the cursor", shell.find(row, "runningMarker"), Qt.tint(card, row.color), Kit.FoamyPalette.onSurface(Kit.FoamyPalette.success))) return
+      var marker = shell.find(row, "runningMarker")
+      if (!shell.readsOn("the running marker under the cursor", marker, Qt.tint(card, row.color), Kit.FoamyPalette.onSurface(Kit.FoamyPalette.success))) return
+      shell.markerUnderCursor = marker.color
+      // To the Settings stop, the last one: the cursor leaves the row.
+      one.popup.bodyItem.moveRequested(0, 1)
+      expect(function() { return !row.hasCursor }, 5000, "the cursor is off the account's row")
+    },
+    function() {
+      var card = one.popup.cardItem.color
+      var row = shell.find(one.popup.bodyItem, "account:work")
+      var marker = shell.find(row, "runningMarker")
+      var drawn = Kit.FoamyPalette.contrastRatio(marker.color, Qt.tint(card, row.color))
+      if (!check(Qt.colorEqual(marker.color, shell.markerUnderCursor), "the running marker keeps its colour off the cursor (" + shell.markerUnderCursor + ", then " + marker.color + ")")) return
+      if (!check(drawn >= 4.5, "the running marker reads at rest (" + marker.color + " " + drawn.toFixed(2) + ":1 on " + Qt.tint(card, row.color) + ")")) return
       one.close()
       shell.applyTheme(shell.savedTheme)
       expect(function() { return shell.colours() === shell.savedColours }, 5000, "the theme before the switch is read again",
@@ -1081,17 +1098,21 @@ ShellRoot {
   // The theme before the switch: the file's text and its colours.
   property string savedTheme: ""
   property string savedColours: ""
-  // The unread count's colour with the cursor off its row.
+  // The unread count's colour with the cursor off its row, and the running
+  // marker's with the cursor on it.
   property color countAtRest: "transparent"
+  property color markerUnderCursor: "transparent"
   function colours() {
     return [Commons.Color.background, Commons.Color.foreground, Commons.Color.accent, Commons.Color.urgent,
             Kit.FoamyPalette.background, Kit.FoamyPalette.error, Kit.FoamyPalette.success, Kit.FoamyPalette.lightTheme].map(String).join()
   }
   // `item` (a text or a thin mark) shows, and reads at 4.5:1 on `surface`,
   // the opaque colour drawn under it; `old`, its colour before the change,
-  // does not (else the theme proves nothing).
+  // does not (else the theme proves nothing). Both colours are opaque:
+  // contrastRatio does not see alpha.
   function readsOn(name, item, surface, old) {
     if (!check(item && item.visible, name + " shows")) return false
+    if (!check(surface.a === 1 && item.color.a === 1, name + " and its surface are opaque (" + item.color + " on " + surface + ")")) return false
     var before = Kit.FoamyPalette.contrastRatio(old, surface)
     if (!check(before < 4.5, "the theme makes " + name + " fail in its old colour (" + old + " " + before.toFixed(2) + ":1 on " + surface + ")")) return false
     var drawn = Kit.FoamyPalette.contrastRatio(item.color, surface)

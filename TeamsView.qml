@@ -207,6 +207,9 @@ PanelKeyCatcher {
           readonly property bool blocked: root.launchingId !== "" && !launching && !modelData.running
           readonly property bool hasUnread: modelData.running && modelData.unread > 0
           readonly property bool active: hasCursor
+          // The row's fill under the cursor, its strongest surface, opaque:
+          // its status colours are measured there, so they keep one colour.
+          readonly property color cursorSurface: Qt.tint(FoamyPalette.background, fill)
           readonly property string statusText: !modelData.running || modelData.unread === null ? "" : modelData.unread > 0 ? FoamyI18n.tn("%1 unread", modelData.unread) : FoamyI18n.t("No unread")
           readonly property string actionText: launching ? FoamyI18n.t("Launching…") : modelData.running ? FoamyI18n.t("Focus") : FoamyI18n.t("Launch")
           objectName: "account:" + modelData.id
@@ -235,8 +238,7 @@ PanelKeyCatcher {
               Layout.preferredWidth: Style.space(3)
               Layout.preferredHeight: Style.space(26)
               radius: FoamyStyle.pillRadius(width)
-              // Measured on the row's cursor fill, its strongest surface.
-              color: row.modelData.running ? FoamyPalette.onSurface(FoamyPalette.success, Qt.tint(FoamyPalette.background, row.fill)) : FoamyPalette.divider
+              color: row.modelData.running ? FoamyPalette.onSurface(FoamyPalette.success, row.cursorSurface) : FoamyPalette.divider
             }
             ColumnLayout {
               Layout.fillWidth: true
@@ -270,9 +272,8 @@ PanelKeyCatcher {
                     anchors.centerIn: parent
                     text: row.modelData.unread > 99 ? FoamyI18n.number(99, 0) + "+" : FoamyI18n.number(row.modelData.unread || 0, 0)
                     wrapMode: Text.NoWrap
-                    // Measured on the badge over the row's cursor fill, its
-                    // strongest surface, so it keeps one colour in both states.
-                    color: FoamyPalette.onSurface(Commons.Color.urgent, Qt.tint(Qt.tint(FoamyPalette.background, row.fill), badge.color))
+                    // Measured on the badge over the row's cursor surface.
+                    color: FoamyPalette.onSurface(Commons.Color.urgent, Qt.tint(row.cursorSurface, badge.color))
                     font.pixelSize: FoamyStyle.font.caption
                     font.weight: Font.DemiBold
                   }
