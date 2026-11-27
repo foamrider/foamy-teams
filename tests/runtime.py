@@ -41,6 +41,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "harness"
 import "plugin" as Plugin
@@ -890,6 +891,40 @@ ShellRoot {
       next()
     },
 
+    // --- dim red theme: status text reads where the raw red does not -------
+    function() {
+      if (!reset("dim red theme", { accounts: [shell.work] })) return
+      shell.savedTheme = themeFile.text()
+      shell.applyTheme(dimRed.text())
+      Plugin.TeamsService.windows = [shell.teamsWindow("teams-work", "(3) Chat | Microsoft Teams", fakeWindow)]
+      Plugin.TeamsService.launchError = "Could not launch the account. Check its browser or launch arguments."
+      one.open()
+      expect(function() {
+        var body = one.popup.bodyItem
+        return Kit.FoamyPalette.error.toString() === "#a54242" && Commons.Color.urgent.toString() === "#a54242" && one.opened
+          && shell.findText(body, one.launchError) !== null && shell.findText(shell.find(body, "account:work"), "3") !== null
+      }, 5000, "the popup shows the launch error and the unread badge in the dim red theme")
+    },
+    function() {
+      var palette = Kit.FoamyPalette
+      var body = one.popup.bodyItem
+      var error = shell.findText(body, one.launchError)
+      var row = shell.find(body, "account:work")
+      var count = shell.findText(row, "3")
+      // The badge over the row's cursor fill: the strongest surface the count lies on.
+  var under = Qt.tint(Qt.tint(palette.background, row.fill), count.parent.color)
+      var raw = Commons.Color.urgent
+      if (!check(palette.contrastRatio(raw, palette.background) < 4.5 && palette.contrastRatio(error.color, palette.background) >= 4.5,
+                 "the launch error reads on the popup: " + error.color + " " + palette.contrastRatio(error.color, palette.background).toFixed(2) + ":1")) return
+      if (!check(palette.contrastRatio(raw, under) < 4.5 && palette.contrastRatio(count.color, under) >= 4.5,
+                 "the unread count reads on its badge under the cursor: " + count.color + " " + palette.contrastRatio(count.color, under).toFixed(2) + ":1 on " + under)) return
+      one.close()
+      shell.applyTheme(shell.savedTheme)
+      // FoamyPalette reads the restored file later: wait for it, so it is
+      // not read while the shell quits.
+      expect(function() { return Kit.FoamyPalette.error.toString() !== "#a54242" }, 5000, "the theme before is read again")
+    },
+
     // --- createObject settings --------------------------------------------
     function() {
       if (!reset("createObject settings", { accounts: shell.accounts })) return
@@ -1010,6 +1045,17 @@ ShellRoot {
   // What the next paste reads (the kit's wl-paste stand-in), and Omarchy's language.
   FileView { id: clipboardMode; path: Quickshell.env("TEST_CLIPBOARD_STATE"); blockWrites: true; printErrors: false }
   FileView { id: language; path: Quickshell.env("OMARCHY_LANGUAGE_FILE"); blockWrites: true; printErrors: false }
+  // The theme's colors.toml, and the kit's dark theme with a dim red
+  // (2.70:1 on its background) that the "dim red theme" scenario switches to.
+  FileView { id: themeFile; path: Kit.FoamyPalette.themePath; blockLoading: true; blockWrites: true; printErrors: false }
+  FileView { id: dimRed; path: Quickshell.env("FOAMY_DIM_RED"); blockLoading: true; printErrors: false }
+  property string savedTheme: ""
+  // Switches the theme as the host's applyTheme does: its colours, then the
+  // theme's file that FoamyPalette watches.
+  function applyTheme(raw) {
+    Commons.Color.loadColors(raw)
+    themeFile.setText(raw)
+  }
 }
 """
 
@@ -1043,6 +1089,7 @@ def run():
     (stub / "foamy-teams-fake-client").write_text('#!/bin/sh\necho "$*" >> "$FOAMY_CLIENT_LOG"\n')
     (stub / "foamy-teams-fake-client").chmod(0o755)
     r.env["FOAMY_CLIENT_LOG"] = str(r.base / "client.log")
+    r.env["FOAMY_DIM_RED"] = str(kit / "tests/fixtures/themes/dim-red.toml")
     # Paste runs kit/clipboard.sh against the kit's wl-paste stand-in, never the real clipboard.
     r.env.update(harness.hostenv.clipboard_fakes(r.base / "clipboard", env=r.env))
     r.run(timeout=60)

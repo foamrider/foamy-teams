@@ -174,7 +174,7 @@ PanelKeyCatcher {
           visible: root.error !== ""
           width: parent.width
           text: root.error
-          color: Commons.Color.urgent
+          color: FoamyPalette.onSurface(FoamyPalette.error)
           font.pixelSize: FoamyStyle.font.bodySmall
           Accessible.role: Accessible.AlertMessage
           Accessible.name: text
@@ -268,7 +268,9 @@ PanelKeyCatcher {
                     anchors.centerIn: parent
                     text: row.modelData.unread > 99 ? FoamyI18n.number(99, 0) + "+" : FoamyI18n.number(row.modelData.unread || 0, 0)
                     wrapMode: Text.NoWrap
-                    color: Commons.Color.urgent
+                    // Measured on the badge over the row's cursor fill, its
+                    // strongest surface, so it keeps one colour in both states.
+                    color: FoamyPalette.onSurface(Commons.Color.urgent, Qt.tint(Qt.tint(FoamyPalette.background, row.fill), badge.color))
                     font.pixelSize: FoamyStyle.font.caption
                     font.weight: Font.DemiBold
                   }
